@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGP 协议手册 - 网络协议可视化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.9);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        header {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 0.8;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .toc {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 48px;
+        }
+
+        .toc h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--accent-blue);
+        }
+
+        .toc ol {
+            padding-left: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--accent-blue);
+        }
+
+        section {
+            margin-bottom: 48px;
+        }
+
+        section[id] {
+            scroll-margin-top: 80px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .concept-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .concept-box h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+        }
+
+        .concept-box p {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .attribute-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .attribute-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(59, 130, 246, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--accent-blue);
+        }
+
+        pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 16px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">← 返回首页</a>
+            <h1>BGP 协议手册</h1>
+            <p class="subtitle">Border Gateway Protocol - 边界网关协议</p>
+        </header>
+
+        <nav class="toc">
+            <h2>目录</h2>
+            <ol>
+                <li><a href="#overview">概述</a></li>
+                <li><a href="#as">自治系统 (AS)</a></li>
+                <li><a href="#ibgp">iBGP 与 eBGP</a></li>
+                <li><a href="#rr">路由反射器 (Route Reflector)</a></li>
+                <li><a href="#attributes">BGP 路径属性</a></li>
+                <li><a href="#route-selection">路由选择</a></li>
+                <li><a href="#operation">工作流程</a></li>
+            </ol>
+        </nav>
+
+        <section id="overview">
+            <h2>概述</h2>
+            <p>BGP（Border Gateway Protocol）是互联网的核心路由协议，用于在不同自治系统（AS）之间交换路由信息。与 OSPF 等内部网关协议不同，BGP 是外部网关协议，设计用于处理大规模的跨域路由。</p>
+
+            <div class="concept-box">
+                <h4>关键特性</h4>
+                <p>• <strong>路径向量协议</strong>：携带完整路径信息，便于路由选择和防止环路</p>
+                <p>• <strong>增量更新</strong>：只发送变化的路由，而非完整路由表</p>
+                <p>• <strong>丰富的路由策略</strong>：支持多种路径属性实现复杂路由策略</p>
+                <p>• <strong>TCP 可靠传输</strong>：使用 TCP 179 端口，确保可靠性</p>
+            </div>
+        </section>
+
+        <section id="as">
+            <h2>自治系统 (AS)</h2>
+            <p>自治系统（Autonomous System，AS）是指在单一技术管理下的一组路由器，使用相同的内部路由协议和外部路由策略。AS 拥有唯一的 AS 号（ASN），用于在 BGP 路由中标识不同网络。</p>
+
+            <h3>AS 号范围</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>类型</th>
+                    <th>范围</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>公有 AS</td>
+                    <td>1 - 64511</td>
+                    <td>可在互联网注册使用</td>
+                </tr>
+                <tr>
+                    <td>私有 AS</td>
+                    <td>64512 - 65535</td>
+                    <td>仅在 AS 内部使用，不会通告到互联网</td>
+                </tr>
+            </table>
+
+            <h3>AS_PATH 属性</h3>
+            <p>AS_PATH 是 BGP 的核心属性之一，记录了路由经过的所有 AS 号。当 BGP 路由器收到路由时，会检查 AS_PATH：如果发现自己的 AS 号在其中，说明存在环路，路由将被拒绝。</p>
+
+            <pre><code>AS_PATH 示例：
+192.168.1.0/24 via 65001 65002 65003
+       ↑         ↑    ↑    ↑
+       目标网络   经过AS65001、AS65002、AS65003</code></pre>
+        </section>
+
+        <section id="ibgp">
+            <h2>iBGP 与 eBGP</h2>
+            <p>BGP 根据路由器所属 AS 的关系，分为 iBGP（Internal BGP）和 eBGP（External BGP）两种类型。</p>
+
+            <div class="concept-box">
+                <h4>iBGP（内部 BGP）</h4>
+                <p>• 同一 AS 内部的 BGP 会话</p>
+                <p>• 不修改 AS_PATH（AS_PATH 保持不变）</p>
+                <p>• Next_HOP 属性保持传递</p>
+                <p>• 需要全互联或使用路由反射器</p>
+            </div>
+
+            <div class="concept-box">
+                <h4>eBGP（外部 BGP）</h4>
+                <p>• 不同 AS 之间的 BGP 会话</p>
+                <p>• 添加自己的 AS 号到 AS_PATH 头部</p>
+                <p>• Next_HOP 通常会修改为 eBGP 邻居接口 IP</p>
+                <p>• TTL 默认为 1（可通过修改增加）</p>
+            </div>
+
+            <h3>iBGP 全互联问题</h3>
+            <p>在大型 AS 中，iBGP 要求所有路由器两两互联，形成全互联拓扑。这导致 n 个路由器需要 n(n-1)/2 条连接。路由反射器（Route Reflector）是解决此问题的标准方案。</p>
+        </section>
+
+        <section id="rr">
+            <h2>路由反射器 (Route Reflector)</h2>
+            <p>路由反射器是解决 iBGP 全互联问题的一种机制。通过允许路由从 RR 反射给其他 iBGP 邻居，打破了 iBGP 水平分割规则。</p>
+
+            <h3>角色</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>角色</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>Route Reflector (RR)</td>
+                    <td>路由反射器，负责将学习到的路由反射给客户端</td>
+                </tr>
+                <tr>
+                    <td>Client（客户端）</td>
+                    <td>与 RR 建立 iBGP 连接的路由器</td>
+                </tr>
+                <tr>
+                    <td>Non-Client（非客户端）</td>
+                    <td>普通 iBGP 邻居，与 RR 保持全互联</td>
+                </tr>
+            </table>
+
+            <h3>反射规则</h3>
+            <p>当 RR 收到来自客户端的路由时，会反射给所有其他客户端和非客户端；当收到来自非客户端的路由时，只发送给客户端。</p>
+
+            <div class="concept-box">
+                <h4>反射器优势</h4>
+                <p>• 减少 iBGP 连接数量：n 个路由器只需 n 条连接</p>
+                <p>• 降低管理复杂度</p>
+                <p>• 支持多级反射层级</p>
+            </div>
+        </section>
+
+        <section id="attributes">
+            <h2>BGP 路径属性</h2>
+            <p>BGP 使用路径属性来描述路由特征，用于路由选择和策略控制。</p>
+
+            <table class="attribute-table">
+                <tr>
+                    <th>属性</th>
+                    <th>类型</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>AS_PATH</td>
+                    <td>公认必遵</td>
+                    <td>路由经过的 AS 序列，用于防环</td>
+                </tr>
+                <tr>
+                    <td>NEXT_HOP</td>
+                    <td>公认必遵</td>
+                    <td>到达目的网络的下一跳 IP 地址</td>
+                </tr>
+                <tr>
+                    <td>ORIGIN</td>
+                    <td>公认必遵</td>
+                    <td>路由来源：IGP/EGP/Incomplete</td>
+                </tr>
+                <tr>
+                    <td>LOCAL_PREF</td>
+                    <td>公认自由</td>
+                    <td>本地优先级，用于 AS 内部选路</td>
+                </tr>
+                <tr>
+                    <td>MULTI_EXIT_DISC (MED)</td>
+                    <td>可选非传递</td>
+                    <td>告诉外部 AS 优先进入的入口</td>
+                </tr>
+                <tr>
+                    <td>COMMUNITY</td>
+                    <td>可选传递</td>
+                    <td>标记路由，用于策略控制</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="route-selection">
+            <h2>路由选择</h2>
+            <p>BGP 使用以下顺序选择最优路由（按优先级从高到低）：</p>
+
+            <table class="attribute-table">
+                <tr>
+                    <th>优先级</th>
+                    <th>条件</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>最高权重（Weight，Cisco 特有）</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>最高 LOCAL_PREF</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>本地生成的路由（Next_Hop = 0.0.0.0）</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>最短 AS_PATH</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>最低 ORIGIN 类型（IGP &gt; EGP &gt; Incomplete）</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>最低 MED</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>eBGP 路由优于 iBGP</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>最低 IGP 成本到 NEXT_HOP</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="operation">
+            <h2>工作流程</h2>
+            <p>BGP 会话建立和路由交换的基本流程：</p>
+
+            <h3>1. 会话建立</h3>
+            <p>BGP 使用 TCP 179 端口建立连接，握手后发送 Open 消息协商参数，建立邻居关系后进入 Established 状态。</p>
+
+            <h3>2. 路由交换</h3>
+            <p>邻居关系建立后，双方交换完整路由表（通过 UPDATE 消息）。之后只有路由变化时才会发送增量更新。</p>
+
+            <h3>3. 路由反射</h3>
+            <p>当 AS 内部部署路由反射器时，客户端路由器只与 RR 建立 iBGP 连接，路由通过 RR 反射分发。</p>
+
+            <h3>4. 跨 AS 通告</h3>
+            <p>eBGP 邻居之间交换路由时，会将自己的 AS 号添加到 AS_PATH，并可能修改 NEXT_HOP 属性。</p>
+        </section>
+
+        <footer>
+            <p>基于 HTML5 + JavaScript 构建 · <a href="../index.html">返回首页</a></p>
+        </footer>
+    </div>
+</body>
+</html>

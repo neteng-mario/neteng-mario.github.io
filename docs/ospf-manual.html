@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSPF 协议手册 - 网络协议可视化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.9);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        header {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-green);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 0.8;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .toc {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 48px;
+        }
+
+        .toc h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--accent-green);
+        }
+
+        .toc ol {
+            padding-left: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: var(--accent-green);
+        }
+
+        section {
+            margin-bottom: 48px;
+        }
+
+        section[id] {
+            scroll-margin-top: 80px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent-green);
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .concept-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .concept-box h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-green);
+            margin-bottom: 12px;
+        }
+
+        .concept-box p {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .attribute-table th {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .attribute-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(16, 185, 129, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--accent-green);
+        }
+
+        pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--accent-green);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 16px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">← 返回首页</a>
+            <h1>OSPF 协议手册</h1>
+            <p class="subtitle">Open Shortest Path First - 开放最短路径优先</p>
+        </header>
+
+        <nav class="toc">
+            <h2>目录</h2>
+            <ol>
+                <li><a href="#overview">概述</a></li>
+                <li><a href="#area">OSPF 区域</a></li>
+                <li><a href="#lsa">链路状态广告 (LSA)</a></li>
+                <li><a href="#dr">DR 与 BDR</a></li>
+                <li><a href="#spf">SPF 算法</a></li>
+                <li><a href="#neighbor">邻居关系</a></li>
+                <li><a href="#packet">数据包类型</a></li>
+            </ol>
+        </nav>
+
+        <section id="overview">
+            <h2>概述</h2>
+            <p>OSPF（Open Shortest Path First）是一种内部网关协议（IGP），用于在单一自治系统内交换路由信息。作为链路状态协议，OSPF 维护一个完整的网络拓扑图，并使用 SPF（Dijkstra）算法计算最短路径。</p>
+
+            <div class="concept-box">
+                <h4>关键特性</h4>
+                <p>• <strong>链路状态协议</strong>：每个路由器保存整个区域的拓扑信息</p>
+                <p>• <strong>快速收敛</strong>：网络变化时只发送增量更新</p>
+                <p>• <strong>无环路</strong>：SPF 算法保证路由无环</p>
+                <p>• <strong>区域划分</strong>：支持层次化网络设计，减少 LSDB 规模</p>
+                <p>• <strong>支持认证</strong>：支持简单密码和 MD5 认证</p>
+            </div>
+        </section>
+
+        <section id="area">
+            <h2>OSPF 区域</h2>
+            <p>OSPF 使用区域（Area）来划分网络，实现层次化设计。这减少了链路状态数据库（LSDB）的规模，降低了 SPF 计算开销。</p>
+
+            <h3>区域类型</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>区域类型</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>Backbone Area (Area 0)</td>
+                    <td>骨干区域，所有其他区域必须连接到 Area 0</td>
+                </tr>
+                <tr>
+                    <td>Standard Area</td>
+                    <td>普通区域，可以接收所有 LSA 类型</td>
+                </tr>
+                <tr>
+                    <td>Stub Area</td>
+                    <td>末节区域，不接收外部路由（Type 5 LSA），使用默认路由</td>
+                </tr>
+                <tr>
+                    <td>NSSA</td>
+                    <td>Not So Stubby Area，类似于 Stub，但可引入少量外部路由</td>
+                </tr>
+            </table>
+
+            <div class="concept-box">
+                <h4>区域划分的优势</h4>
+                <p>• 减少 LSDB 规模：路由器只需保存本区域内的链路状态</p>
+                <p>• 降低 SPF 计算开销：拓扑变化只在本区域扩散</p>
+                <p>• 限制网络波动：网络不稳定只影响局部区域</p>
+                <p>• 提高网络可扩展性</p>
+            </div>
+        </section>
+
+        <section id="lsa">
+            <h2>链路状态广告 (LSA)</h2>
+            <p>LSA 是 OSPF 路由器之间交换的信息单元，用于描述网络拓扑。不同类型的 LSA 携带不同的网络信息。</p>
+
+            <h3>LSA 类型</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>类型</th>
+                    <th>名称</th>
+                    <th>描述</th>
+                </tr>
+                <tr>
+                    <td>Type 1</td>
+                    <td>Router LSA</td>
+                    <td>每个路由器生成，描述直连接口状态和成本</td>
+                </tr>
+                <tr>
+                    <td>Type 2</td>
+                    <td>Network LSA</td>
+                    <td>DR 生成，描述广播网络上所有路由器列表</td>
+                </tr>
+                <tr>
+                    <td>Type 3</td>
+                    <td>Summary LSA</td>
+                    <td>ABR 生成，描述区域间路由</td>
+                </tr>
+                <tr>
+                    <td>Type 4</td>
+                    <td>Summary LSA</td>
+                    <td>ABR 生成，描述 ASBR 位置</td>
+                </tr>
+                <tr>
+                    <td>Type 5</td>
+                    <td>External LSA</td>
+                    <td>ASBR 生成，描述外部路由（从其他协议引入）</td>
+                </tr>
+            </table>
+
+            <h3>LSA 头部</h3>
+            <p>每个 LSA 都包含以下关键字段：</p>
+            <pre><code>LSA 头部：
+- LS Age: LSA 生存时间（秒）
+- LS Type: LSA 类型（1-5）
+- Link State ID: LSA 标识
+- Advertising Router: 始发路由器 ID
+- LS Sequence Number: 序列号，用于检测最新 LSA
+- Checksum: 校验和
+- Length: LSA 长度</code></pre>
+        </section>
+
+        <section id="dr">
+            <h2>DR 与 BDR</h2>
+            <p>在广播网络（如以太网）中，如果每台路由器都与其他路由器建立 OSPF 邻居关系，会产生 n(n-1)/2 条连接。DR（Designated Router）和 BDR（Backup Designated Router）机制解决了这个问题。</p>
+
+            <h3>路由器角色</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>角色</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>DR (Designated Router)</td>
+                    <td>指定路由器，作为网络的"代表"与其他路由器交换 LSA</td>
+                </tr>
+                <tr>
+                    <td>BDR (Backup DR)</td>
+                    <td>备份指定路由器，在 DR 故障时接替其职责</td>
+                </tr>
+                <tr>
+                    <td>DROther</td>
+                    <td>普通路由器，只与 DR/BDR 交换 LSA</td>
+                </tr>
+            </table>
+
+            <h3>DR 选举</h3>
+            <p>DR 选举基于以下优先级（越高越优先）：</p>
+            <pre><code>1. 最高 OSPF 接口优先级（默认 1，范围 0-255）
+2. 最高 Router ID（RID）
+注意：优先级为 0 的路由器不参与 DR/BDR 选举</code></pre>
+
+            <div class="concept-box">
+                <h4>为什么需要 DR/BDR？</h4>
+                <p>• 减少邻接关系数量：从 n(n-1)/2 减少到 2n-3</p>
+                <p>• 降低 LSA 泛洪开销</p>
+                <p>• 在多路访问网络中充当 LSA 交换中心</p>
+            </div>
+        </section>
+
+        <section id="spf">
+            <h2>SPF 算法</h2>
+            <p>OSPF 使用 Dijkstra 算法（也称 SPF 算法）计算最短路径树，确定到每个目的网络的最佳路由。</p>
+
+            <h3>算法原理</h3>
+            <p>SPF 算法将网络视为有向图，路由器作为节点，链路作为边，每条边有权重（Cost）。算法逐步构建最短路径树：</p>
+
+            <pre><code>SPF 算法步骤：
+1. 初始化：已计算集合只包含根节点（本地路由器）
+2. 选择：从候选集合中选择Cost最低的节点
+3. 扩展：将选中节点加入已计算集合
+4. 更新：更新该节点的邻居 Cost
+5. 重复步骤 2-4，直到所有节点都被计算</code></pre>
+
+            <h3>OSPF Cost</h3>
+            <p>OSPF 使用 Cost 作为路径选择的度量标准。接口 Cost = 参考带宽 / 接口带宽。</p>
+
+            <table class="attribute-table">
+                <tr>
+                    <th>接口类型</th>
+                    <th>典型 Cost</th>
+                </tr>
+                <tr>
+                    <td>FastEthernet (100 Mbps)</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>Ethernet (10 Mbps)</td>
+                    <td>10</td>
+                </tr>
+                <tr>
+                    <td>Serial (1.544 Mbps)</td>
+                    <td>64</td>
+                </tr>
+                <tr>
+                    <td>56K Modem</td>
+                    <td>1785</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="neighbor">
+            <h2>邻居关系</h2>
+            <p>OSPF 路由器通过交换 Hello 数据包发现邻居，并建立邻接关系。邻居关系的建立经过多个状态。</p>
+
+            <h3>邻居状态</h3>
+            <table class="attribute-table">
+                <tr>
+                    <th>状态</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>Down</td>
+                    <td>初始状态，未收到 Hello</td>
+                </tr>
+                <tr>
+                    <td>Init</td>
+                    <td>收到 Hello，但双向通信未建立</td>
+                </tr>
+                <tr>
+                    <td>2-Way</td>
+                    <td>双向通信建立成功，DR/BDR 选举在此发生</td>
+                </tr>
+                <tr>
+                    <td>ExStart</td>
+                    <td>交换初始状态，确定主从关系</td>
+                </tr>
+                <tr>
+                    <td>Exchange</td>
+                    <td>交换 DBD（数据库描述）数据包</td>
+                </tr>
+                <tr>
+                    <td>Loading</td>
+                    <td>加载 LSR（链路状态请求）数据包</td>
+                </tr>
+                <tr>
+                    <td>Full</td>
+                    <td>邻接关系建立完成，LSDB 同步</td>
+                </tr>
+            </table>
+
+            <h3>Hello 协议</h3>
+            <p>Hello 数据包用于发现邻居、维护邻居关系。广播网络和 Point-to-Point 网络的 Hello 间隔不同。</p>
+
+            <table class="attribute-table">
+                <tr>
+                    <th>网络类型</th>
+                    <th>Hello 间隔</th>
+                    <th>Dead 间隔</th>
+                </tr>
+                <tr>
+                    <td>Broadcast / Point-to-Point</td>
+                    <td>10 秒</td>
+                    <td>40 秒</td>
+                </tr>
+                <tr>
+                    <td>NBMA / Point-to-Multipoint</td>
+                    <td>30 秒</td>
+                    <td>120 秒</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="packet">
+            <h2>数据包类型</h2>
+            <p>OSPF 使用 5 种数据包类型来建立和维护邻居关系。</p>
+
+            <table class="attribute-table">
+                <tr>
+                    <th>类型</th>
+                    <th>名称</th>
+                    <th>功能</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>Hello</td>
+                    <td>发现和维护邻居关系</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>DBD (Database Description)</td>
+                    <td>描述本地 LSDB，交换链路状态摘要</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>LSR (Link State Request)</td>
+                    <td>请求特定的 LSA</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>LSU (Link State Update)</td>
+                    <td>发送请求的 LSA，包含完整的 LSA 信息</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>LSAck (Link State Acknowledgment)</td>
+                    <td>确认收到的 LSA</td>
+                </tr>
+            </table>
+
+            <div class="concept-box">
+                <h4>数据包封装</h4>
+                <p>OSPF 数据包直接封装在 IP 协议中，协议号为 89。不依赖 TCP 或 UDP。</p>
+                <pre><code>OSPF 报文封装：
+┌─────────┬─────────────┬──────────────────┐
+│   IP    │   OSPF      │   LSA (Type 1-5)   │
+│ Header  │   Header    │                   │
+└─────────┴─────────────┴──────────────────┘
+       ↑                        ↑
+  Protocol = 89         包含路由信息</code></pre>
+            </div>
+        </section>
+
+        <footer>
+            <p>基于 HTML5 + JavaScript 构建 · <a href="../index.html">返回首页</a></p>
+        </footer>
+    </div>
+</body>
+</html>
