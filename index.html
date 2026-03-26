@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>网络协议可视化演示</title>
+    <title>NetDoc Hub - 网络工程师资料库</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -25,6 +25,8 @@
             --accent-green: #10b981;
             --accent-purple: #8b5cf6;
             --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-cyan: #06b6d4;
             --border-color: rgba(255, 255, 255, 0.1);
         }
 
@@ -66,23 +68,23 @@
         .logo {
             display: inline-flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
             margin-bottom: 24px;
         }
 
         .logo-icon {
-            width: 56px;
-            height: 56px;
+            width: 64px;
+            height: 64px;
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            border-radius: 16px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: 32px;
         }
 
         .logo-text {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 800;
             background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
             -webkit-background-clip: text;
@@ -97,140 +99,51 @@
             line-height: 1.6;
         }
 
-        .hero-diagram {
+        .category-nav {
             display: flex;
             justify-content: center;
-            margin: 60px 0;
-            perspective: 1000px;
+            gap: 12px;
+            margin: 48px 0;
+            flex-wrap: wrap;
         }
 
-        .diagram-wrapper {
-            position: relative;
-            padding: 40px;
-        }
-
-        .diagram-wrapper::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 500px;
-            height: 300px;
-            background: radial-gradient(ellipse, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .as-box {
-            position: absolute;
-            border: 2px dashed;
-            border-radius: 20px;
-            padding: 30px;
-            transition: all 0.5s ease;
-        }
-
-        .as-box:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
-        }
-
-        .as100 {
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            border-color: rgba(59, 130, 246, 0.4);
-            background: rgba(59, 130, 246, 0.05);
-        }
-
-        .as100:hover {
-            transform: translateY(-50%) scale(1.02);
-        }
-
-        .as200 {
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            border-color: rgba(16, 185, 129, 0.4);
-            background: rgba(16, 185, 129, 0.05);
-        }
-
-        .as200:hover {
-            transform: translateY(-50%) scale(1.02);
-        }
-
-        .as-label {
-            position: absolute;
-            top: -12px;
-            left: 20px;
-            background: var(--bg-primary);
-            padding: 4px 12px;
+        .category-btn {
+            padding: 10px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 100px;
+            color: var(--text-secondary);
             font-size: 14px;
-            font-weight: 700;
-            border-radius: 6px;
-        }
-
-        .as100 .as-label {
-            color: var(--accent-blue);
-        }
-
-        .as200 .as-label {
-            color: var(--accent-green);
-        }
-
-        .router {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 18px;
-            margin: 15px;
-            position: relative;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
+            text-decoration: none;
         }
 
-        .router::after {
-            content: attr(data-role);
-            position: absolute;
-            bottom: -20px;
-            font-size: 10px;
-            color: var(--text-tertiary);
-            white-space: nowrap;
+        .category-btn:hover,
+        .category-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
         }
 
-        .router:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 30px currentColor;
+        .category-btn.protocol { }
+        .category-btn.protocol:hover,
+        .category-btn.protocol.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
         }
 
-        .router-row {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
+        .category-btn.tool:hover,
+        .category-btn.tool.active {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
         }
 
-        .ebgp-link {
-            position: absolute;
-            top: 50%;
-            width: 80px;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
-            transform: translateY(-50%);
-            border-radius: 2px;
-        }
-
-        .ebgp-link::before {
-            content: 'eBGP';
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--accent-orange);
+        .category-btn.ebook:hover,
+        .category-btn.ebook.active {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
         }
 
         .section-title {
@@ -239,19 +152,27 @@
         }
 
         .section-title h2 {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .section-title h2 .icon {
+            font-size: 24px;
         }
 
         .section-title p {
             color: var(--text-secondary);
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .projects-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 24px;
             margin-bottom: 80px;
         }
@@ -260,40 +181,58 @@
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 32px;
+            padding: 28px;
             transition: all 0.3s ease;
             cursor: pointer;
             text-decoration: none;
             color: inherit;
             display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--card-accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         .project-card:hover {
             transform: translateY(-4px);
-            border-color: var(--accent-blue);
+            border-color: var(--card-accent, var(--accent-blue));
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
+        .project-card:hover::before {
+            opacity: 1;
+        }
+
         .project-icon {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            margin-bottom: 20px;
+            font-size: 26px;
+            margin-bottom: 16px;
         }
 
         .project-card h3 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             margin-bottom: 8px;
         }
 
         .project-card p {
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
             margin-bottom: 16px;
         }
@@ -301,22 +240,26 @@
         .project-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .tag {
-            padding: 4px 10px;
+            padding: 3px 8px;
             background: rgba(59, 130, 246, 0.15);
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: 500;
             color: var(--accent-blue);
         }
 
+        .tag.protocol { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+        .tag.tool { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .tag.ebook { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
             margin-bottom: 80px;
         }
 
@@ -324,30 +267,30 @@
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             text-align: center;
         }
 
         .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin: 0 auto 16px;
+            font-size: 22px;
+            margin: 0 auto 12px;
         }
 
         .feature-card h4 {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .feature-card p {
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.5;
         }
 
@@ -368,96 +311,102 @@
             text-decoration: underline;
         }
 
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin: 40px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 40px 16px;
             }
 
-            .as-box {
-                position: relative;
-                transform: none !important;
-                margin: 20px 0;
+            .logo-text {
+                font-size: 24px;
             }
 
-            .as-box:hover {
-                transform: scale(1.02) !important;
+            .category-nav {
+                gap: 8px;
             }
 
-            .hero-diagram {
-                flex-direction: column;
-                align-items: center;
-                gap: 40px;
+            .category-btn {
+                padding: 8px 16px;
+                font-size: 13px;
             }
 
-            .diagram-wrapper {
-                display: flex;
-                flex-direction: column;
-                gap: 40px;
+            .projects-grid {
+                grid-template-columns: 1fr;
             }
 
-            .diagram-wrapper::before {
-                display: none;
+            .stats {
+                gap: 24px;
+            }
+
+            .stat-value {
+                font-size: 28px;
             }
         }
     </style>
 </head>
 <body>
     <div class="bg-grid"></div>
-
     <div class="container">
         <header>
             <div class="logo">
-                <div class="logo-icon">🌐</div>
-                <span class="logo-text">网络协议可视化</span>
+                <div class="logo-icon">📡</div>
+                <span class="logo-text">NetDoc Hub</span>
             </div>
             <p class="subtitle">
-                交互式网络协议动画演示，通过动态可视化帮助理解 BGP、OSPF
-                等核心路由协议的工作原理
+                网络工程师资料库 · 协议原理可视化 · 排障命令速查 · 学习笔记整理
             </p>
-        </header>
 
-        <div class="hero-diagram">
-            <div class="diagram-wrapper">
-                <div class="as-box as100">
-                    <span class="as-label">AS 100</span>
-                    <div class="router-row">
-                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="RR">R2</div>
-                    </div>
-                    <div class="router-row">
-                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="Client">R3</div>
-                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="Client">R4</div>
-                    </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">6</div>
+                    <div class="stat-label">协议动画</div>
                 </div>
-
-                <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px;">
-                    <div class="router" style="background: rgba(156, 163, 175, 0.2); border: 2px solid #9ca3af; color: #9ca3af; width: 60px; height: 60px; font-size: 16px; margin: 0;" data-role="eBGP">R1</div>
+                <div class="stat-item">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">使用手册</div>
                 </div>
-
-                <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px; margin-left: 100px;">
-                    <div class="router" style="background: rgba(156, 163, 175, 0.2); border: 2px solid #9ca3af; color: #9ca3af; width: 60px; height: 60px; font-size: 16px; margin: 0;" data-role="eBGP">R5</div>
-                </div>
-
-                <div class="as-box as200">
-                    <span class="as-label">AS 200</span>
-                    <div class="router-row">
-                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="RR">R6</div>
-                    </div>
-                    <div class="router-row">
-                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="Client">R7</div>
-                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="Client">R8</div>
-                    </div>
+                <div class="stat-item">
+                    <div class="stat-value">10+</div>
+                    <div class="stat-label">工具命令</div>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <section>
+        <nav class="category-nav">
+            <a href="#protocols" class="category-btn protocol active" onclick="switchCategory('protocol', event)">🖥️ 协议演示</a>
+            <a href="#tools" class="category-btn tool" onclick="switchCategory('tool', event)">🛠️ 工具手册</a>
+        </nav>
+
+        <section id="protocols">
             <div class="section-title">
-                <h2>演示项目</h2>
-                <p>点击卡片进入交互式动画演示</p>
+                <h2><span class="icon">🖥️</span> 协议动画演示</h2>
+                <p>交互式动画，深入理解网络协议工作原理</p>
             </div>
 
             <div class="projects-grid">
-                <a href="ospf/ospf.html" class="project-card">
+                <a href="ospf/ospf.html" class="project-card" style="--card-accent: var(--accent-green);">
                     <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
                         🌿
                     </div>
@@ -467,10 +416,67 @@
                         理解链路状态路由和最短路径优先算法
                     </p>
                     <div class="project-tags">
-                        <span class="tag">OSPF</span>
-                        <span class="tag">链路状态</span>
-                        <span class="tag">LSA</span>
-                        <span class="tag">SPF</span>
+                        <span class="tag protocol">OSPF</span>
+                        <span class="tag protocol">链路状态</span>
+                        <span class="tag protocol">LSA</span>
+                        <span class="tag protocol">SPF</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section id="tools">
+            <div class="section-title">
+                <h2><span class="icon">🛠️</span> 工具手册</h2>
+                <p>网络工程师必备工具速查</p>
+            </div>
+
+            <div class="projects-grid">
+                <a href="手册/网工入门・8 个排障必备命令 图文速查手册 (1) (1).pdf" class="project-card" style="--card-accent: var(--accent-orange);">
+                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));">
+                        📚
+                    </div>
+                    <h3>排障必备命令速查</h3>
+                    <p>
+                        8 个网络故障排查必备命令速查手册，
+                        包含 ping、traceroute、netstat 等常用工具详解
+                    </p>
+                    <div class="project-tags">
+                        <span class="tag tool">PDF</span>
+                        <span class="tag tool">排障</span>
+                        <span class="tag tool">速查</span>
+                    </div>
+                </a>
+
+                <a href="docs/bgp-manual.html" class="project-card" style="--card-accent: var(--accent-blue);">
+                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));">
+                        📖
+                    </div>
+                    <h3>BGP 协议手册</h3>
+                    <p>
+                        详细介绍 BGP 路由协议的工作原理，
+                        包括 AS、iBGP、eBGP、路由反射器等核心概念
+                    </p>
+                    <div class="project-tags">
+                        <span class="tag tool">BGP</span>
+                        <span class="tag tool">AS_PATH</span>
+                        <span class="tag tool">路由反射</span>
+                    </div>
+                </a>
+
+                <a href="docs/ospf-manual.html" class="project-card" style="--card-accent: var(--accent-green);">
+                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
+                        📖
+                    </div>
+                    <h3>OSPF 协议手册</h3>
+                    <p>
+                        详细介绍 OSPF 链路状态路由协议，
+                        包含 LSA、DR/BDR、区域划分等核心概念
+                    </p>
+                    <div class="project-tags">
+                        <span class="tag tool">OSPF</span>
+                        <span class="tag tool">LSA</span>
+                        <span class="tag tool">SPF</span>
                     </div>
                 </a>
             </div>
@@ -478,34 +484,31 @@
 
         <section>
             <div class="section-title">
-                <h2>核心特性</h2>
+                <h2><span class="icon">✨</span> 项目特点</h2>
             </div>
 
             <div class="features">
                 <div class="feature-card">
                     <div class="feature-icon" style="background: rgba(59, 130, 246, 0.15);">
-                        🎬
+                        🎯
                     </div>
-                    <h4>分步动画演示</h4>
-                    <p>逐步展示路由协议的工作流程，便于教学和理解</p>
+                    <h4>协议可视化</h4>
+                    <p>通过动画直观展示协议工作流程</p>
                 </div>
-
                 <div class="feature-card">
                     <div class="feature-icon" style="background: rgba(16, 185, 129, 0.15);">
-                        📊
+                        ⚡
                     </div>
-                    <h4>实时路由表</h4>
-                    <p>动态展示每台设备的路由表变化过程</p>
+                    <h4>交互演示</h4>
+                    <p>可控制播放进度，深入理解每一步</p>
                 </div>
-
                 <div class="feature-card">
                     <div class="feature-icon" style="background: rgba(139, 92, 246, 0.15);">
-                        🔀
+                        📖
                     </div>
-                    <h4>数据包追踪</h4>
-                    <p>可视化数据包的发送、接收和转发过程</p>
+                    <h4>手册速查</h4>
+                    <p>常用命令和协议概念快速查阅</p>
                 </div>
-
                 <div class="feature-card">
                     <div class="feature-icon" style="background: rgba(245, 158, 11, 0.15);">
                         🎨
@@ -516,63 +519,6 @@
             </div>
         </section>
 
-        <section>
-            <div class="section-title">
-                <h2>使用手册</h2>
-                <p>网络工程师必备工具</p>
-            </div>
-
-            <div class="projects-grid">
-                <a href="手册/网工入门・8 个排障必备命令 图文速查手册 (1) (1).pdf" class="project-card">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));">
-                        📚
-                    </div>
-                    <h3>网工入门・排障必备命令</h3>
-                    <p>
-                        8 个网络故障排查必备命令速查手册，
-                        包含 ping、traceroute、netstat 等常用工具详解
-                    </p>
-                    <div class="project-tags">
-                        <span class="tag">PDF</span>
-                        <span class="tag">排障</span>
-                        <span class="tag">速查</span>
-                    </div>
-                </a>
-
-                <a href="docs/bgp-manual.html" class="project-card">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));">
-                        📖
-                    </div>
-                    <h3>BGP 协议手册</h3>
-                    <p>
-                        详细介绍 BGP 路由协议的工作原理，
-                        包括 AS、iBGP、eBGP、路由反射器等核心概念
-                    </p>
-                    <div class="project-tags">
-                        <span class="tag">BGP</span>
-                        <span class="tag">AS_PATH</span>
-                        <span class="tag">路由反射</span>
-                    </div>
-                </a>
-
-                <a href="docs/ospf-manual.html" class="project-card">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
-                        📖
-                    </div>
-                    <h3>OSPF 协议手册</h3>
-                    <p>
-                        详细介绍 OSPF 链路状态路由协议，
-                        包含 LSA、DR/BDR、区域划分等核心概念
-                    </p>
-                    <div class="project-tags">
-                        <span class="tag">OSPF</span>
-                        <span class="tag">LSA</span>
-                        <span class="tag">SPF</span>
-                    </div>
-                </a>
-            </div>
-        </section>
-
         <footer>
             <p>
                 基于 HTML5 Canvas + JavaScript 构建 ·
@@ -580,5 +526,27 @@
             </p>
         </footer>
     </div>
+
+    <script>
+        function switchCategory(category, e) {
+            e.preventDefault();
+
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+
+            const protocolsSection = document.getElementById('protocols');
+            const toolsSection = document.getElementById('tools');
+
+            if (category === 'protocol') {
+                protocolsSection.style.display = 'block';
+                toolsSection.style.display = 'none';
+            } else if (category === 'tool') {
+                protocolsSection.style.display = 'none';
+                toolsSection.style.display = 'block';
+            }
+        }
+
+        switchCategory('protocol', { preventDefault: () => {}, target: document.querySelector('.category-btn.protocol') });
+    </script>
 </body>
 </html>
