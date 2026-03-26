@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGP 路由反射器 - DrawIO 拓扑参考</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(31, 41, 55, 0.85);
+            --border-color: rgba(148, 163, 184, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --gradient-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 1920px;
+            height: 1080px;
+        }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 1920px;
+            height: 1080px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            height: 70px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            width: 44px; height: 44px;
+            background: var(--gradient-main);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .brand-info h1 {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-indicator {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 24px;
+            text-align: center;
+        }
+
+        .step-indicator .label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .step-indicator .value {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn {
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .btn-play {
+            background: var(--gradient-main);
+            color: white;
+        }
+
+        .btn-play:hover:not(:disabled) { transform: translateY(-2px); }
+        .btn-play.playing { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+
+        .btn-reset {
+            background: var(--bg-secondary);
+            color: white;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 500px;
+            gap: 12px;
+            height: 950px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .animation-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .animation-panel {
+            flex: 1;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #scene-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .danmaku-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 24px;
+        }
+
+        .danmaku-track {
+            display: flex;
+            justify-content: center;
+        }
+
+        .danmaku-item {
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(15px);
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-left: 4px solid var(--accent-blue);
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.5;
+            max-width: 70%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            animation: danmakuEnter 0.5s ease;
+            word-break: break-all;
+        }
+
+        .danmaku-item strong { color: var(--accent-blue); font-weight: 700; }
+        .danmaku-item .highlight { color: var(--accent-green); font-weight: 700; }
+
+        @keyframes danmakuEnter {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .timeline-bar {
+            height: 70px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 0 16px;
+            flex-shrink: 0;
+        }
+
+        .timeline-list {
+            display: flex;
+            gap: 8px;
+            height: 100%;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .timeline-item {
+            flex-shrink: 0;
+            padding: 9px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid transparent;
+            min-width: 85px;
+            text-align: center;
+        }
+
+        .timeline-item:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .timeline-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .timeline-item.completed {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .timeline-item:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .timeline-step-num {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .timeline-item.active .timeline-step-num { color: var(--accent-blue); }
+
+        .timeline-step-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .timeline-item.active .timeline-step-title { color: var(--accent-blue); }
+        .timeline-item.completed .timeline-step-title { color: var(--accent-green); }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            height: 950px;
+            padding-right: 4px;
+            max-width: 500px;
+            width: 500px;
+        }
+
+        .info-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            flex-shrink: 0;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-card-icon {
+            width: 28px; height: 28px;
+            background: var(--gradient-main);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .info-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .info-card-content {
+            line-height: 1.5;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .info-card-content p { margin-bottom: 5px; }
+
+        .route-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .route-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .route-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .route-tab.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .route-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .route-table th {
+            text-align: left;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .route-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .route-table tr:hover td {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .route-table tr.new-route {
+            animation: routeFlash 1s ease;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        @keyframes routeFlash {
+            0% { background: rgba(16, 185, 129, 0.4); }
+            100% { background: rgba(255, 255, 255, 0.05); }
+        }
+
+        .route-prefix {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .route-nexthop {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-blue);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .route-aspath {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-orange);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .route-best {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .aspath-viz {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .as-segment {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid var(--accent-orange);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-orange);
+            font-weight: 700;
+        }
+
+        .as-segment.new {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            animation: aspathNew 0.5s ease;
+        }
+
+        @keyframes aspathNew {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .ibgp-split-box {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 6px;
+        }
+
+        .ibgp-split-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-red);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ibgp-split-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .rr-box {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid var(--accent-blue);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .rr-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rr-box-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .rr-rules-box {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid var(--accent-purple);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .rr-rules-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-purple);
+            margin-bottom: 6px;
+        }
+
+        .rr-rule {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .rr-rule::before {
+            content: '▸';
+            color: var(--accent-green);
+            position: absolute;
+            left: 0;
+        }
+
+        .topology-compare-box {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .topology-compare-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 6px;
+        }
+
+        .topology-compare-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .policy-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            padding: 8px;
+            margin-top: 6px;
+            border-left: 2px solid var(--accent-orange);
+        }
+
+        .policy-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin-bottom: 6px;
+        }
+
+        .policy-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .policy-item::before {
+            content: '▸';
+            color: var(--accent-green);
+        }
+
+        .packet-log {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            height: 80px;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .packet-log-title {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .packet-log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .packet-log-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-size: 12px;
+            animation: logSlideIn 0.3s ease;
+        }
+
+        @keyframes logSlideIn {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .packet-log-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 4px currentColor;
+        }
+
+        .packet-log-text {
+            flex: 1;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            word-break: break-all;
+        }
+
+        .legend-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            height: 45px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .legend-dot {
+            width: 9px; height: 9px;
+            border-radius: 3px;
+            box-shadow: 0 0 7px currentColor;
+        }
+
+        .legend-text {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: var(--gradient-main); border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+        <header class="header">
+            <div class="brand">
+                <div class="brand-logo">🔄</div>
+                <div class="brand-info">
+                    <h1>BGP 路由反射器 - DrawIO 拓扑</h1>
+                    <p>R2/R6 反射器 · R1/R5 eBGP 边界 · AS 框精确包含</p>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="step-indicator">
+                    <div class="label">步骤</div>
+                    <div class="value" id="step-display">01 / 10</div>
+                </div>
+                <button class="btn btn-reset" onclick="resetAnimation()">🔄</button>
+                <button class="btn btn-play" id="play-btn" onclick="togglePlay()">
+                    <span id="play-icon">▶</span>
+                    <span id="play-text">播放</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="animation-section">
+                <div class="animation-panel">
+                    <div class="canvas-container">
+                        <canvas id="scene-canvas"></canvas>
+                        <div class="danmaku-container">
+                            <div class="danmaku-track" id="danmaku-track"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-bar">
+                    <div class="timeline-list" id="timeline-list"></div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon" id="info-icon">📍</div>
+                        <div class="info-card-title" id="info-title">网络拓扑</div>
+                    </div>
+                    <div class="info-card-content" id="info-content">
+                        <p>AS100 框内：R2(RR)-R3/R4(Client)。AS200 框内：R6(RR)-R7/R8(Client)。R1/R5 在 AS 框外作为 eBGP 边界。</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">📊</div>
+                        <div class="info-card-title">BGP 路由表</div>
+                    </div>
+                    <div class="route-tabs">
+                        <div class="route-tab active" onclick="switchRouteTable('R2')" id="tab-R2">R2 (RR)</div>
+                        <div class="route-tab" onclick="switchRouteTable('R3')" id="tab-R3">R3</div>
+                        <div class="route-tab" onclick="switchRouteTable('R4')" id="tab-R4">R4</div>
+                        <div class="route-tab" onclick="switchRouteTable('R6')" id="tab-R6">R6 (RR)</div>
+                        <div class="route-tab" onclick="switchRouteTable('R7')" id="tab-R7">R7</div>
+                        <div class="route-tab" onclick="switchRouteTable('R8')" id="tab-R8">R8</div>
+                    </div>
+                    <table class="route-table">
+                        <thead>
+                            <tr>
+                                <th>前缀</th>
+                                <th>下一跳</th>
+                                <th>AS_PATH</th>
+                                <th>类型</th>
+                            </tr>
+                        </thead>
+                        <tbody id="route-table-body">
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-tertiary); font-size: 14px;">暂无路由</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">🔗</div>
+                        <div class="info-card-title">AS_PATH 可视化</div>
+                    </div>
+                    <div id="aspath-viz" class="aspath-viz">
+                        <span style="color: var(--text-tertiary); font-size: 13px;">暂无 AS_PATH</span>
+                    </div>
+                    
+                    <div class="ibgp-split-box" id="ibgp-split-box" style="display: none;">
+                        <div class="ibgp-split-title">
+                            <span>⚠️</span>
+                            <span>iBGP 水平分割规则</span>
+                        </div>
+                        <div class="ibgp-split-item">从 iBGP 学习的路由不能传给其他 iBGP 邻居</div>
+                        <div class="ibgp-split-item">全互联需要 n(n-1)/2 条连接</div>
+                    </div>
+                    
+                    <div class="rr-box" id="rr-box" style="display: none;">
+                        <div class="rr-box-title">
+                            <span>🔄</span>
+                            <span>路由反射器 (RR) 作用</span>
+                        </div>
+                        <div class="rr-box-item">RR 可以突破 iBGP 水平分割</div>
+                        <div class="rr-box-item">Client 之间不需要 iBGP 连接</div>
+                        <div class="rr-box-item">RR 反射 eBGP 路由给所有 Client</div>
+                    </div>
+
+                    <div class="rr-rules-box" id="rr-rules-box" style="display: none;">
+                        <div class="rr-rules-title">RR 反射规则</div>
+                        <div class="rr-rule">eBGP 路由 → 反射给所有 Client</div>
+                        <div class="rr-rule">Client 路由 → 反射给其他 Client</div>
+                        <div class="rr-rule">Non-Client 路由 → 只传给 Client</div>
+                    </div>
+
+                    <div class="topology-compare-box" id="topology-compare-box" style="display: none;">
+                        <div class="topology-compare-title">
+                            <span>✅</span>
+                            <span>RR vs 全互联</span>
+                        </div>
+                        <div class="topology-compare-item">全互联：3 个路由器需要 3 条 iBGP</div>
+                        <div class="topology-compare-item">RR 星型：只需要 2 条 iBGP</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">⚙️</div>
+                        <div class="info-card-title">BGP 选路规则</div>
+                    </div>
+                    <div class="policy-box">
+                        <div class="policy-title">选路优先级</div>
+                        <div class="policy-item">1. 最高 WEIGHT</div>
+                        <div class="policy-item">2. 最高 LOCAL_PREF</div>
+                        <div class="policy-item">3. 本地起源优先</div>
+                        <div class="policy-item">4. 最短 AS_PATH</div>
+                    </div>
+                </div>
+
+                <div class="info-card" style="flex: 1;">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">📋</div>
+                        <div class="info-card-title">UPDATE 报文</div>
+                    </div>
+                    <div class="packet-log">
+                        <div class="packet-log-title">🔍 实时捕获</div>
+                        <div class="packet-log-list" id="packet-log-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend-bar">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-blue);"></div>
+                <span class="legend-text">iBGP</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-orange);"></div>
+                <span class="legend-text">eBGP</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-green);"></div>
+                <span class="legend-text">OSPF</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-purple);"></div>
+                <span class="legend-text">AS_PATH</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-red);"></div>
+                <span class="legend-text">PC</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            STEP_DURATION: 10000,
+            PACKET_SPEED: 0.008,
+            DANMAKU_DURATION: 10000,
+            DANMAKU_FADE_DELAY: 300,
+            PARTICLE_COUNT: 80
+        };
+
+        const state = {
+            currentStep: 0, isPlaying: false, playInterval: null,
+            particles: [], packets: [], packetLog: [],
+            time: 0, currentMode: 'full', totalPackets: 0,
+            currentBGPState: 'idle', currentPacketType: null,
+            currentDanmaku: null, danmakuTimer: null, isTransitioning: false,
+            routes: { R2: [], R3: [], R4: [], R6: [], R7: [], R8: [] },
+            currentRouteTable: 'R2',
+            pingSuccess: false, showDropPacket: true,
+            showIbgpSplit: false, showRR: false, showRRRules: false, showCompare: false
+        };
+
+        const canvas = document.getElementById('scene-canvas');
+        const ctx = canvas.getContext('2d');
+        const danmakuTrack = document.getElementById('danmaku-track');
+
+        // 10 个设备 - 参考 DrawIO 拓扑，R1 和 R5 在 AS 框外作为 eBGP 边界
+        const devices = [
+            { id: 0, name: 'R3', ip: '10.1.1.3', as: 100, x: 0, y: 0, color: '#3b82f6', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 1, name: 'R2', ip: '10.1.1.2', as: 100, x: 0, y: 0, color: '#1e40af', type: 'router', role: 'RR', routes: [], pulse: 0 },
+            { id: 2, name: 'R4', ip: '10.1.1.4', as: 100, x: 0, y: 0, color: '#3b82f6', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 3, name: 'R1', ip: '10.1.1.1', as: 100, x: 0, y: 0, color: '#9ca3af', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 4, name: 'R5', ip: '10.2.2.1', as: 200, x: 0, y: 0, color: '#9ca3af', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 5, name: 'R6', ip: '10.2.2.2', as: 200, x: 0, y: 0, color: '#047857', type: 'router', role: 'RR', routes: [], pulse: 0 },
+            { id: 6, name: 'R7', ip: '10.2.2.3', as: 200, x: 0, y: 0, color: '#10b981', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 7, name: 'R8', ip: '10.2.2.4', as: 200, x: 0, y: 0, color: '#10b981', type: 'router', role: 'Client', routes: [], pulse: 0 },
+            { id: 8, name: 'PC1', ip: '192.168.100.10', as: 100, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 },
+            { id: 9, name: 'PC2', ip: '192.168.1.10', as: 200, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 }
+        ];
+
+        // DrawIO 参考拓扑连接
+        const connections = [
+            { from: 1, to: 0, type: 'ibgp', label: 'iBGP' },
+            { from: 1, to: 2, type: 'ibgp', label: 'iBGP' },
+            { from: 2, to: 1, type: 'ibgp', label: 'iBGP' },
+            { from: 1, to: 3, type: 'ibgp', label: 'iBGP' },
+            { from: 3, to: 4, type: 'ebgp', label: 'eBGP' },
+            { from: 4, to: 5, type: 'ibgp', label: 'iBGP' },
+            { from: 5, to: 6, type: 'ibgp', label: 'iBGP' },
+            { from: 5, to: 7, type: 'ibgp', label: 'iBGP' },
+            { from: 7, to: 5, type: 'ibgp', label: 'iBGP' },
+            { from: 2, to: 8, type: 'ethernet', label: 'LAN' },
+            { from: 7, to: 9, type: 'ethernet', label: 'LAN' }
+        ];
+
+        const steps = [
+            { 
+                title: '初始状态', 
+                icon: '🌐', 
+                danmaku: '🌐 PC1 尝试 Ping PC2，但无路由被丢弃', 
+                pingSuccess: false, 
+                showDropPacket: true,
+                showIbgpSplit: false,
+                showRR: false,
+                showRRRules: false,
+                showCompare: false,
+                routes: { R2: [], R3: [], R4: [], R6: [], R7: [], R8: [] }, 
+                aspath: [],
+                packets: [{from:8, to:2, type:'ping-drop', detail: 'ICMP - 无路由丢弃', route: null}] 
+            },
+            { 
+                title: 'AS200 重分发到 BGP', 
+                icon: '⚡', 
+                danmaku: '⚡ R8 将直连路由 192.168.1.0/24 重分发，发送给 R6 (R)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { R2: [], R3: [], R4: [], R6: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R7: [], R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }] }, 
+                aspath: [200],
+                packets: [
+                    {from:7, to:5, type:'redistribute', detail: 'R8→R6: 192.168.1.0/24 AS:200', route: {prefix: '192.168.1.0/24', aspath: [200]}}
+                ] 
+            },
+            { 
+                title: 'R6 反射路由', 
+                icon: '🔄', 
+                danmaku: '🔄 R6 (RR): 收到路由后，反射给客户机 R7 和 R5', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { R2: [], R3: [], R4: [], R6: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R7: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }] }, 
+                aspath: [200],
+                packets: [
+                    {from:5, to:6, type:'ibgp', detail: 'R6→R7: 反射 192.168.1.0/24', route: {prefix: '192.168.1.0/24', aspath: [200]}},
+                    {from:5, to:4, type:'ibgp', detail: 'R6→R5: 反射 192.168.1.0/24', route: {prefix: '192.168.1.0/24', aspath: [200]}}
+                ] 
+            },
+            { 
+                title: 'AS100 重分发到 BGP', 
+                icon: '⚡', 
+                danmaku: '⚡ R4 将直连路由 192.168.100.0/24 重分发，发送给 RR (R2)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { R2: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R3: [], R4: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R6: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R7: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }] }, 
+                aspath: [100],
+                packets: [
+                    {from:2, to:1, type:'redistribute', detail: 'R4→R2: 192.168.100.0/24 AS:100', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: 'R2 反射路由', 
+                icon: '🔄', 
+                danmaku: '🔄 R2 (RR): 收到路由后，反射给客户机 R3 和 R1', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { R2: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R3: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R4: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R6: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R7: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }] }, 
+                aspath: [100],
+                packets: [
+                    {from:1, to:0, type:'ibgp', detail: 'R2→R3: 反射 192.168.100.0/24', route: {prefix: '192.168.100.0/24', aspath: [100]}},
+                    {from:1, to:3, type:'ibgp', detail: 'R2→R1: 反射 192.168.100.0/24', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: 'eBGP 双向通告', 
+                icon: '📤', 
+                danmaku: '📤 R5↔R1: 双向 eBGP UPDATE (AS200↔AS100)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: false,
+                showCompare: false,
+                routes: { R2: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R3: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R4: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], R6: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R7: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }] }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:4, to:3, type:'ebgp', detail: 'R5→R1: 192.168.1.0/24 AS:200', route: {prefix: '192.168.1.0/24', aspath: [200]}},
+                    {from:3, to:4, type:'ebgp', detail: 'R1→R5: 192.168.100.0/24 AS:100', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: 'eBGP 路由引入 iBGP', 
+                icon: '📚', 
+                danmaku: '📚 eBGP 路由引入 iBGP: R1→R2 (AS200路由) | R5→R6 (AS100路由)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: false,
+                showCompare: false,
+                routes: { 
+                    R2: [
+                        { prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }
+                    ], 
+                    R3: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }], 
+                    R4: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.4', aspath: [100], type: 'ibgp', best: true }],
+                    R6: [
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true },
+                        { prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }
+                    ],
+                    R7: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }], 
+                    R8: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.4', aspath: [200], type: 'ibgp', best: true }]
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:3, to:1, type:'ibgp', detail: 'R1→R2: 192.168.1.0/24 (eBGP→iBGP)', route: {prefix: '192.168.1.0/24', aspath: [200]}},
+                    {from:4, to:5, type:'ibgp', detail: 'R5→R6: 192.168.100.0/24 (eBGP→iBGP)', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: 'RR 学习路由 (AS100)', 
+                icon: '�', 
+                danmaku: '📖 R2 (RR): 从客户机 R1 学习到 AS200 路由 (192.168.1.0/24)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: true,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { 
+                    R2: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }], 
+                    R3: [], R4: [], R6: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }], R7: [], R8: []
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:3, to:1, type:'ibgp', detail: 'R1→R2: 192.168.1.0/24', route: {prefix: '192.168.1.0/24', aspath: [200]}}
+                ] 
+            },
+            { 
+                title: 'RR 反射路由 (AS100)', 
+                icon: '🔄', 
+                danmaku: '🔄 R2 (RR): 反射 AS200 路由给客户机 R3、R4', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: true,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { 
+                    R2: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }], 
+                    R3: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }], 
+                    R4: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }],
+                    R6: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }],
+                    R7: [], 
+                    R8: []
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:1, to:0, type:'ibgp', detail: 'R2→R3: 192.168.1.0/24', route: {prefix: '192.168.1.0/24', aspath: [200]}},
+                    {from:1, to:2, type:'ibgp', detail: 'R2→R4: 192.168.1.0/24', route: {prefix: '192.168.1.0/24', aspath: [200]}}
+                ] 
+            },
+            { 
+                title: 'RR 学习路由 (AS200)', 
+                icon: '�', 
+                danmaku: '📖 R6 (RR): 从客户机 R5 学习到 AS100 路由 (192.168.100.0/24)', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: true,
+                showRR: true,
+                showRRRules: true,
+                showCompare: false,
+                routes: { 
+                    R2: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }], 
+                    R3: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }], 
+                    R4: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }],
+                    R6: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }],
+                    R7: [], 
+                    R8: []
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:4, to:5, type:'ibgp', detail: 'R5→R6: 192.168.100.0/24', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: 'RR 反射路由 (AS200)', 
+                icon: '🔄', 
+                danmaku: '🔄 R6 (RR): 反射 AS100 路由给客户机 R7、R8', 
+                pingSuccess: false, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: true,
+                routes: { 
+                    R2: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }], 
+                    R3: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }], 
+                    R4: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }],
+                    R6: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }],
+                    R7: [{ prefix: '192.168.100.0/24', nexthop: '10.2.2.3', aspath: [100], type: 'ibgp', best: true }], 
+                    R8: [{ prefix: '192.168.100.0/24', nexthop: '10.2.2.3', aspath: [100], type: 'ibgp', best: true }]
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:5, to:6, type:'ibgp', detail: 'R6→R7: 192.168.100.0/24', route: {prefix: '192.168.100.0/24', aspath: [100]}},
+                    {from:5, to:7, type:'ibgp', detail: 'R6→R8: 192.168.100.0/24', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                ] 
+            },
+            { 
+                title: '双向 Ping 测试', 
+                icon: '�', 
+                danmaku: '� PC1 ↔ PC2: 双向 ICMP 成功！路由反射器工作正常', 
+                pingSuccess: true, 
+                showDropPacket: false,
+                showIbgpSplit: false,
+                showRR: true,
+                showRRRules: true,
+                showCompare: true,
+                routes: { 
+                    R2: [{ prefix: '192.168.1.0/24', nexthop: '10.2.2.1', aspath: [200], type: 'ibgp', best: true }], 
+                    R3: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }], 
+                    R4: [{ prefix: '192.168.1.0/24', nexthop: '10.1.1.2', aspath: [200], type: 'ibgp', best: true }],
+                    R6: [{ prefix: '192.168.100.0/24', nexthop: '10.1.1.1', aspath: [100], type: 'ibgp', best: true }],
+                    R7: [{ prefix: '192.168.100.0/24', nexthop: '10.2.2.3', aspath: [100], type: 'ibgp', best: true }], 
+                    R8: [{ prefix: '192.168.100.0/24', nexthop: '10.2.2.3', aspath: [100], type: 'ibgp', best: true }]
+                }, 
+                aspath: [200, 100],
+                packets: [
+                    {from:8, to:9, type:'ping', detail: 'ICMP: PC1→PC2', route: null},
+                    {from:9, to:8, type:'ping', detail: 'ICMP: PC2→PC1', route: null}
+                ] 
+            }
+        ];
+
+        const packetColors = {
+            ospf: { start: '#10b981', end: '#059669' },
+            ibgp: { start: '#3b82f6', end: '#2563eb' },
+            ebgp: { start: '#f59e0b', end: '#d97706' },
+            update: { start: '#f59e0b', end: '#d97706' },
+            redistribute: { start: '#f59e0b', end: '#d97706' },
+            ping: { start: '#10b981', end: '#059669' },
+            'ping-drop': { start: '#ef4444', end: '#dc2626' },
+            ethernet: { start: '#64748b', end: '#475569' }
+        };
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '100, 100, 100';
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width / window.devicePixelRatio;
+                this.y = Math.random() * canvas.height / window.devicePixelRatio;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 2 + 1;
+                this.alpha = Math.random() * 0.5 + 0.15;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width / window.devicePixelRatio) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height / window.devicePixelRatio) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(59, 130, 246, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        class RoutePacket {
+            constructor(type, from, to, detail, route, delay = 0) {
+                this.type = type; this.from = from; this.to = to;
+                this.detail = detail || type.toUpperCase();
+                this.route = route;
+                this.delay = delay; this.progress = 0; this.completed = false;
+                this.size = 0; this.maxSize = 24;
+                this.startTime = Date.now() + delay; this.started = false;
+                this.trail = [];
+                this.isDrop = type === 'ping-drop';
+            }
+            update() {
+                if (!this.started && Date.now() >= this.startTime) this.started = true;
+                if (this.started && this.progress < 1) {
+                    this.progress += CONFIG.PACKET_SPEED;
+                    if (this.size < this.maxSize) this.size += 0.8;
+                    const r1 = devices[this.from], r2 = devices[this.to];
+                    const x = r1.x + (r2.x - r1.x) * this.progress;
+                    const y = r1.y + (r2.y - r1.y) * this.progress;
+                    this.trail.push({ x, y, alpha: 1, size: this.size * 0.5 });
+                    if (this.trail.length > 15) this.trail.shift();
+                    this.trail.forEach(t => { t.alpha -= 0.07; t.size *= 0.95; });
+                } else if (this.progress >= 1) {
+                    this.completed = true;
+                    devices[this.to].pulse = 1;
+                }
+            }
+            draw() {
+                if (!this.started) return;
+                const r1 = devices[this.from], r2 = devices[this.to];
+                const x = r1.x + (r2.x - r1.x) * this.progress;
+                const y = r1.y + (r2.y - r1.y) * this.progress;
+                const colors = packetColors[this.type];
+                
+                this.trail.forEach(t => {
+                    if (t.alpha > 0) {
+                        const gradient = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, t.size * 2);
+                        gradient.addColorStop(0, colors.start + Math.floor(t.alpha * 80).toString(16).padStart(2, '0'));
+                        gradient.addColorStop(1, 'transparent');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath(); ctx.arc(t.x, t.y, t.size * 2, 0, Math.PI * 2); ctx.fill();
+                    }
+                });
+                
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.size * 3);
+                gradient.addColorStop(0, colors.start + '90');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath(); ctx.arc(x, y, this.size * 3, 0, Math.PI * 2); ctx.fill();
+                
+                ctx.save(); ctx.translate(x, y); ctx.rotate(this.progress * Math.PI * 4);
+                const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                grad.addColorStop(0, colors.start); grad.addColorStop(1, colors.end);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2;
+                    ctx.lineTo(Math.cos(a) * this.size, Math.sin(a) * this.size);
+                }
+                ctx.closePath(); ctx.fill();
+                ctx.restore();
+                
+                if (this.route && this.route.prefix) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px JetBrains Mono';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 10;
+
+                    ctx.fillText(this.route.prefix, x, y - 18);
+
+                    if (this.route.aspath && this.route.aspath.length > 0) {
+                        const aspathStr = this.route.aspath.join(' ');
+                        ctx.fillStyle = colors.start;
+                        ctx.font = 'bold 12px JetBrains Mono';
+                        ctx.fillText(`AS:${aspathStr}`, x, y + 18);
+                    }
+
+                    ctx.shadowBlur = 0;
+                } else if (this.isDrop) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 16px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('❌', x, y);
+                } else {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 10;
+                    ctx.fillText(this.type === 'ping' ? 'ICMP' : this.type.toUpperCase(), x, y);
+                    ctx.shadowBlur = 0;
+                }
+
+                if (this.isDrop && this.progress > 0.8) {
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+                    ctx.font = 'bold 16px Inter';
+                    ctx.fillText('⚠️ 无路由', x, y - 30);
+                    
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x - 15, y - 15);
+                    ctx.lineTo(x + 15, y + 15);
+                    ctx.moveTo(x + 15, y - 15);
+                    ctx.lineTo(x - 15, y + 15);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function showDanmaku(text) {
+            if (state.isTransitioning) return;
+            state.isTransitioning = true;
+            if (state.danmakuTimer) { clearTimeout(state.danmakuTimer); state.danmakuTimer = null; }
+            if (state.currentDanmaku) { state.currentDanmaku.classList.add('persistent'); }
+            setTimeout(() => {
+                if (state.currentDanmaku && state.currentDanmaku.parentNode) {
+                    state.currentDanmaku.parentNode.removeChild(state.currentDanmaku);
+                }
+                const danmaku = document.createElement('div');
+                danmaku.className = 'danmaku-item';
+                danmaku.innerHTML = text;
+                danmakuTrack.appendChild(danmaku);
+                state.currentDanmaku = danmaku;
+                state.danmakuTimer = setTimeout(() => { state.isTransitioning = false; }, CONFIG.DANMAKU_DURATION);
+                state.isTransitioning = false;
+            }, CONFIG.DANMAKU_FADE_DELAY);
+        }
+
+        function clearAllDanmaku() {
+            if (state.danmakuTimer) { clearTimeout(state.danmakuTimer); state.danmakuTimer = null; }
+            if (state.currentDanmaku && state.currentDanmaku.parentNode) {
+                state.currentDanmaku.parentNode.removeChild(state.currentDanmaku);
+                state.currentDanmaku = null;
+            }
+            state.isTransitioning = false;
+        }
+
+        for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) state.particles.push(new Particle());
+
+        function updateDevicePositions() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cx = w / 2, cy = h / 2;
+            const asWidth = w * 0.35, asHeight = h * 0.35;
+            
+            // AS100 (左侧) - 完全独立的区域
+            const as100CenterX = cx - asWidth * 0.8;
+            const as100CenterY = cy - asHeight * 0.3;
+            
+            devices[0].x = as100CenterX - asWidth * 0.3; devices[0].y = as100CenterY - asHeight * 0.35;  // R3 (Client) 左上
+            devices[1].x = as100CenterX; devices[1].y = as100CenterY;  // R2 (RR) 中心
+            devices[2].x = as100CenterX - asWidth * 0.3; devices[2].y = as100CenterY + asHeight * 0.35;  // R4 (Client) 左下
+            devices[3].x = as100CenterX + asWidth * 0.5; devices[3].y = as100CenterY;  // R1 (Border) AS 框外右侧
+            
+            // AS200 (右侧) - 完全独立的区域
+            const as200CenterX = cx + asWidth * 0.8;
+            const as200CenterY = cy - asHeight * 0.3;
+            
+            devices[4].x = as200CenterX - asWidth * 0.5; devices[4].y = as200CenterY;  // R5 (Border) AS 框外左侧
+            devices[5].x = as200CenterX; devices[5].y = as200CenterY;  // R6 (RR) 中心
+            devices[6].x = as200CenterX + asWidth * 0.3; devices[6].y = as200CenterY - asHeight * 0.35;  // R7 (Client) 右上
+            devices[7].x = as200CenterX + asWidth * 0.3; devices[7].y = as200CenterY + asHeight * 0.35;  // R8 (Client) 右下
+            
+            // PC1 和 PC2 放在下方居中位置
+            devices[8].x = as100CenterX - asWidth * 0.3; devices[8].y = as100CenterY + asHeight * 0.9;  // PC1 在 AS100 下方
+            devices[9].x = as200CenterX + asWidth * 0.3; devices[9].y = as200CenterY + asHeight * 0.9;  // PC2 在 AS200 下方
+        }
+
+        function drawASArea(x, y, width, height, asNumber, color) {
+            const pulse = Math.sin(state.time * 1) * 2;
+            ctx.strokeStyle = color + '40';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([12, 6]);
+            ctx.lineDashOffset = -state.time * 5;
+            ctx.beginPath();
+            ctx.roundRect(x - width/2 - pulse/2, y - height/2 - pulse/2, width + pulse, height + pulse, 25);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // AS 标签背景
+            ctx.fillStyle = color + '20';
+            ctx.beginPath();
+            ctx.roundRect(x - width/2, y - height/2 - 35, 80, 30, 8);
+            ctx.fill();
+            
+            ctx.fillStyle = color + '90';
+            ctx.font = 'bold 16px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(`AS${asNumber}`, x - width/2 + 40, y - height/2 - 15);
+        }
+
+        function drawRouter(device) {
+            const pulse = Math.sin(state.time * 2) * 5 + device.pulse * 12;
+            device.pulse *= 0.9;
+            const hasRoutes = device.routes && device.routes.length > 0;
+            
+            for (let i = 3; i >= 1; i--) {
+                const glow = ctx.createRadialGradient(device.x, device.y, 25, device.x, device.y, 55 + pulse + i * 10);
+                glow.addColorStop(0, device.color + `${Math.floor(30/i).toString(16).padStart(2, '0')}`);
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow;
+                ctx.beginPath(); ctx.arc(device.x, device.y, 55 + pulse + i * 10, 0, Math.PI * 2); ctx.fill();
+            }
+            
+            // 路由器图标外圈
+            ctx.strokeStyle = device.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(device.x, device.y, 28, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // 路由器图标内圈
+            ctx.fillStyle = device.color + '30';
+            ctx.beginPath();
+            ctx.arc(device.x, device.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 路由器名称
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(device.name, device.x, device.y + 45);
+
+            // 角色标记
+            if (device.role === 'RR') {
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = 'bold 14px Inter';
+                ctx.fillText('★ RR', device.x, device.y - 35);
+            } else if (device.role === 'Client') {
+                ctx.fillStyle = '#93c5fd';
+                ctx.font = 'bold 12px Inter';
+                ctx.fillText('Client', device.x, device.y - 35);
+            }
+            // 移除Border角色的eBGP标记，因为连接线路上已经显示eBGP标签
+            
+            // 路由指示器
+            if (hasRoutes) {
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath(); ctx.arc(device.x + 20, device.y - 20, 6, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        function drawPC(device) {
+            const pulse = Math.sin(state.time * 2) * 4 + device.pulse * 10;
+            device.pulse *= 0.9;
+            
+            // PC 显示器
+            ctx.fillStyle = device.color + 'cc';
+            ctx.beginPath();
+            ctx.roundRect(device.x - 35, device.y - 25, 70, 45, 6);
+            ctx.fill();
+            
+            // 屏幕
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.roundRect(device.x - 30, device.y - 20, 60, 35, 4);
+            ctx.fill();
+            
+            // Ping 状态
+            ctx.fillStyle = state.pingSuccess ? '#22c55e' : '#ef4444';
+            ctx.font = 'bold 14px JetBrains Mono';
+            ctx.textAlign = 'left';
+            ctx.fillText(state.pingSuccess ? 'ping OK' : 'ping...', device.x - 28, device.y - 5);
+            
+            // 底座
+            ctx.fillStyle = device.color + 'aa';
+            ctx.beginPath();
+            ctx.rect(device.x - 12, device.y + 20, 24, 8);
+            ctx.fill();
+            
+            // 名称
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(device.name, device.x, device.y + 48);
+
+            // IP
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = '14px Inter';
+            ctx.fillText(device.ip, device.x, device.y + 66);
+        }
+
+        function drawConnections() {
+            connections.forEach(conn => {
+                const d1 = devices[conn.from], d2 = devices[conn.to];
+                let colors;
+                if (conn.type === 'ethernet') {
+                    colors = { start: '#64748b', end: '#475569' };
+                } else {
+                    const colorMap = {
+                        'ibgp': {start:'#3b82f6',end:'#2563eb'},
+                        'ebgp': {start:'#f97316',end:'#ea580c'},
+                        'ospf': {start:'#10b981',end:'#059669'}
+                    };
+                    colors = colorMap[conn.type];
+                }
+                
+                // 绘制连接线
+                ctx.strokeStyle = colors.start;
+                ctx.lineWidth = conn.type === 'ethernet' ? 2 : 2.5;
+                if (conn.type !== 'ethernet') {
+                    ctx.setLineDash([10, 6]);
+                    ctx.lineDashOffset = -(state.time * 8) % 16;
+                }
+                ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // 绘制连接标签
+                if (conn.label) {
+                    const midX = (d1.x + d2.x) / 2;
+                    const midY = (d1.y + d2.y) / 2;
+                    
+                    // 标签背景
+                    ctx.fillStyle = 'rgba(10, 14, 26, 0.95)';
+                    ctx.beginPath();
+                    ctx.roundRect(midX - 38, midY - 18, 76, 36, 8);
+                    ctx.fill();
+
+                    // 标签边框
+                    ctx.strokeStyle = colors.start;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(midX - 38, midY - 18, 76, 36, 8);
+                    ctx.stroke();
+
+                    // 标签文本
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(conn.label, midX, midY);
+                }
+            });
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+            state.time += 0.016;
+            updateDevicePositions();
+            state.particles.forEach(p => { p.update(); p.draw(); });
+            
+            // 计算AS区域大小
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const asWidth = w * 0.35;
+            const asHeight = h * 0.4;
+            
+            // 绘制AS100区域（左侧）
+            drawASArea(devices[1].x, devices[1].y, asWidth, asHeight, 100, '#3b82f6');
+            // 绘制AS200区域（右侧）
+            drawASArea(devices[5].x, devices[5].y, asWidth, asHeight, 200, '#8b5cf6');
+            
+            drawConnections();
+            for (let i = 0; i < 8; i++) drawRouter(devices[i]);
+            drawPC(devices[8]);
+            drawPC(devices[9]);
+            state.packets = state.packets.filter(p => !p.completed);
+            state.packets.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(render);
+        }
+
+        function generateTimeline() {
+            const list = document.getElementById('timeline-list');
+            let html = '';
+            for (let i = 0; i < steps.length; i++) {
+                let cls = 'timeline-item';
+                if (i < state.currentStep) cls += ' completed';
+                if (i === state.currentStep) cls += ' active';
+                if (i > state.currentStep + 1) cls += ' disabled';
+                html += `<div class="${cls}" onclick="goToStep(${i})" ${i > state.currentStep + 1 ? 'style="pointer-events:none"' : ''}>
+                    <div class="timeline-step-num">Step ${i + 1}</div>
+                    <div class="timeline-step-title">${steps[i].title}</div>
+                </div>`;
+            }
+            list.innerHTML = html;
+            setTimeout(() => {
+                const activeItem = list.querySelector('.timeline-item.active');
+                if (activeItem) {
+                    activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 50);
+        }
+
+        function switchRouteTable(router) {
+            state.currentRouteTable = router;
+            document.querySelectorAll('.route-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.id === `tab-${router}`);
+            });
+            updateRouteTable(state.routes[router] || []);
+        }
+
+        function updateRouteTable(routes) {
+            const tbody = document.getElementById('route-table-body');
+            
+            if (!routes || routes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-tertiary); font-size: 14px;">暂无路由</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = routes.map((r, idx) => `
+                <tr class="${idx === 0 ? 'new-route' : ''}">
+                    <td class="route-prefix">${r.prefix}</td>
+                    <td class="route-nexthop">${r.nexthop}</td>
+                    <td class="route-aspath">${r.aspath ? r.aspath.join(' ') : '-'}</td>
+                    <td class="${r.type === 'ebgp' ? 'route-best' : ''}" style="color: ${r.type === 'ebgp' ? '#f97316' : (r.type === 'ibgp' ? '#3b82f6' : 'var(--text-secondary)')}">${r.type}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateASPathViz(aspath) {
+            const vizContainer = document.getElementById('aspath-viz');
+            if (!aspath || aspath.length === 0) {
+                vizContainer.innerHTML = '<span style="color: var(--text-tertiary); font-size: 13px;">暂无 AS_PATH</span>';
+                return;
+            }
+            
+            vizContainer.innerHTML = aspath.map((as, idx) => `
+                <span class="as-segment ${idx === 0 ? 'new' : ''}">AS${as}</span>
+                ${idx < aspath.length - 1 ? '<span style="color: var(--text-tertiary);">→</span>' : ''}
+            `).join('');
+        }
+
+        function updatePacketLog() {
+            const logList = document.getElementById('packet-log-list');
+            if (state.packetLog.length === 0) {
+                logList.innerHTML = '<div class="packet-log-item"><div class="packet-log-dot" style="background:#64748b"></div><div class="packet-log-text">暂无</div></div>';
+            } else {
+                logList.innerHTML = state.packetLog.slice(-4).map((log, idx) => `
+                    <div class="packet-log-item" style="animation-delay: ${idx * 0.05}s">
+                        <div class="packet-log-dot" style="background: ${packetColors[log.type]?.start || '#64748b'}"></div>
+                        <div class="packet-log-text">${log.detail}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function updateUI() {
+            const step = steps[state.currentStep];
+            if (step.danmaku) showDanmaku(step.danmaku);
+            document.getElementById('step-display').textContent = `${String(state.currentStep + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+            document.getElementById('info-icon').textContent = step.icon;
+            document.getElementById('info-title').textContent = step.title;
+            document.getElementById('info-content').innerHTML = `<p>${step.danmaku.replace(/<[^>]*>/g, '')}</p>`;
+
+            state.pingSuccess = step.pingSuccess;
+            state.routes = step.routes;
+            state.showIbgpSplit = step.showIbgpSplit;
+            state.showRR = step.showRR;
+            state.showRRRules = step.showRRRules;
+            state.showCompare = step.showCompare;
+
+            document.getElementById('ibgp-split-box').style.display = state.showIbgpSplit ? 'block' : 'none';
+            document.getElementById('rr-box').style.display = state.showRR ? 'block' : 'none';
+            document.getElementById('rr-rules-box').style.display = state.showRRRules ? 'block' : 'none';
+            document.getElementById('topology-compare-box').style.display = state.showCompare ? 'block' : 'none';
+
+            updateRouteTable(state.routes[state.currentRouteTable] || []);
+            updateASPathViz(step.aspath);
+            generateTimeline();
+            
+            if (step.packets.length > 0) {
+                state.packets = [];
+                state.packetLog = [];
+                step.packets.forEach((p, i) => {
+                    state.packets.push(new RoutePacket(p.type, p.from, p.to, p.detail, p.route, i * 250));
+                    state.packetLog.push({ type: p.type, detail: p.detail });
+                });
+            }
+            updatePacketLog();
+            
+            generateTimeline();
+            const playBtn = document.getElementById('play-btn');
+            if (state.currentStep >= steps.length - 1) {
+                playBtn.disabled = true;
+                playBtn.innerHTML = '<span>✓</span>';
+            }
+        }
+
+        function goToStep(i) { if (i >= 0 && i < steps.length) { state.currentStep = i; state.packets = []; state.packetLog = []; updateUI(); } }
+        function nextStep() { if (state.currentStep < steps.length - 1) goToStep(state.currentStep + 1); }
+
+        function togglePlay() {
+            if (state.isPlaying) {
+                clearInterval(state.playInterval);
+                state.isPlaying = false;
+                document.getElementById('play-btn').classList.remove('playing');
+                document.getElementById('play-icon').textContent = '▶';
+                document.getElementById('play-text').textContent = '播放';
+            } else {
+                if (state.currentStep >= steps.length - 1) resetAnimation();
+                state.isPlaying = true;
+                document.getElementById('play-btn').classList.add('playing');
+                document.getElementById('play-icon').textContent = '⏸';
+                document.getElementById('play-text').textContent = '暂停';
+                nextStep();
+                state.playInterval = setInterval(() => {
+                    if (state.currentStep < steps.length - 1) nextStep();
+                    else {
+                        clearInterval(state.playInterval);
+                        state.isPlaying = false;
+                        document.getElementById('play-btn').classList.remove('playing');
+                        document.getElementById('play-icon').textContent = '▶';
+                        document.getElementById('play-text').textContent = '播放';
+                    }
+                }, CONFIG.STEP_DURATION);
+            }
+        }
+
+        function resetAnimation() {
+            if (state.isPlaying) {
+                clearInterval(state.playInterval);
+                state.isPlaying = false;
+                document.getElementById('play-btn').classList.remove('playing');
+                document.getElementById('play-icon').textContent = '▶';
+                document.getElementById('play-text').textContent = '播放';
+            }
+            clearAllDanmaku();
+            state.currentStep = 0;
+            state.currentRouteTable = 'R2';
+            state.packets = [];
+            state.packetLog = [];
+            document.querySelectorAll('.route-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.id === 'tab-R2');
+            });
+            updateUI();
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextStep(); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); goToStep(state.currentStep - 1); }
+        });
+
+        render();
+        updateUI();
+    </script>
+</body>
+</html>
+

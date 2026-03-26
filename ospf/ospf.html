@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSPF 邻居建立过程 - 精简演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 12px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .title-section h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .title-section p {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .step-display {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 6px 14px;
+            text-align: center;
+        }
+        
+        .step-label {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+        
+        .step-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-next {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-next:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        }
+        
+        .btn-next:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 10px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .scene-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            flex: 1;
+            position: relative;
+        }
+        
+        #scene-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .step-nav {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .step-nav-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        
+        .step-nav-grid {
+            display: flex;
+            gap: 6px;
+            flex: 1;
+            overflow-x: auto;
+        }
+        
+        .step-nav-item {
+            min-width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .step-nav-item:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+        
+        .step-nav-item.active {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        .step-nav-item.completed {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+        
+        .step-nav-item:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-card-icon {
+            font-size: 1.3rem;
+        }
+        
+        .info-card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        
+        .info-card-phase {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        .info-card-content {
+            line-height: 1.5;
+            color: #cbd5e1;
+            font-size: 0.75rem;
+        }
+        
+        .info-card-content p {
+            margin-bottom: 6px;
+        }
+        
+        .info-card-content strong {
+            color: #3b82f6;
+        }
+        
+        .highlight {
+            background: rgba(59, 130, 246, 0.25);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .warning {
+            background: rgba(245, 158, 11, 0.25);
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #f59e0b;
+        }
+        
+        .link-state-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+        }
+        
+        .link-state-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 7px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 6px;
+        }
+        
+        .link-state-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .link-state-name {
+            font-size: 0.65rem;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .link-state-badge {
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.55rem;
+            font-weight: 700;
+        }
+        
+        .packet-log {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 8px;
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .packet-log-title {
+            font-size: 0.6rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .packet-log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .packet-log-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 7px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 5px;
+            font-size: 0.7rem;
+        }
+        
+        .packet-log-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .state-down { background: rgba(100, 116, 139, 0.5); color: #94a3b8; }
+        .state-init { background: rgba(59, 130, 246, 0.5); color: #3b82f6; }
+        .state-2way { background: rgba(139, 92, 246, 0.5); color: #8b5cf6; }
+        .state-exstart { background: rgba(168, 85, 247, 0.5); color: #a855f7; }
+        .state-exchange { background: rgba(192, 132, 252, 0.5); color: #c084fc; }
+        .state-loading { background: rgba(16, 185, 129, 0.5); color: #10b981; }
+        .state-full { background: rgba(34, 197, 94, 0.5); color: #22c55e; }
+        
+        .legend-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        
+        .legend-text {
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="title-section">
+                <h1>OSPF 邻居建立过程</h1>
+                <p>广播网络拓扑 | 10 个核心步骤</p>
+            </div>
+            <div class="controls">
+                <div class="step-display">
+                    <div class="step-label">当前步骤</div>
+                    <div class="step-value" id="step-display">1 / 10</div>
+                </div>
+                <button class="btn btn-reset" onclick="resetAnimation()">🔄 重置</button>
+                <button class="btn btn-next" id="next-btn" onclick="nextStep()">
+                    <span>下一步 →</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="scene-container">
+                    <canvas id="scene-canvas"></canvas>
+                </div>
+                
+                <div class="step-nav">
+                    <div class="step-nav-title">步骤:</div>
+                    <div class="step-nav-grid" id="step-nav-grid"></div>
+                </div>
+                
+                <div class="legend-bar">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"></div>
+                        <span class="legend-text">Hello</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"></div>
+                        <span class="legend-text">DD</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: linear-gradient(135deg, #f59e0b, #d97706);"></div>
+                        <span class="legend-text">LSR</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+                        <span class="legend-text">LSU</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: linear-gradient(135deg, #ec4899, #db2777);"></div>
+                        <span class="legend-text">LSAck</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon" id="info-icon">📍</div>
+                        <div>
+                            <div class="info-card-title" id="info-title">初始状态</div>
+                            <div class="info-card-phase" id="info-phase">步骤 1 of 10</div>
+                        </div>
+                    </div>
+                    <div class="info-card-content" id="info-content">
+                        <p>网络刚启动，所有路由器都处于 <strong>Down</strong> 状态。</p>
+                        <p>所有链路状态均为 Down，尚未建立任何邻居关系。</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 10%"></div>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <span style="font-size: 1.1rem;">🔗</span>
+                        <div>
+                            <div class="info-card-title">链路状态</div>
+                            <div class="info-card-phase">每条链路的邻居状态</div>
+                        </div>
+                    </div>
+                    <div class="link-state-list" id="link-state-list"></div>
+                </div>
+                
+                <div class="info-card" style="flex: 1;">
+                    <div class="info-card-header">
+                        <span style="font-size: 1.1rem;">📦</span>
+                        <div>
+                            <div class="info-card-title">报文交互日志</div>
+                            <div class="info-card-phase">当前步骤发送的 OSPF 报文</div>
+                        </div>
+                    </div>
+                    <div class="packet-log">
+                        <div class="packet-log-list" id="packet-log-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('scene-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let currentStep = 0;
+        let particles = [];
+        let packets = [];
+        let packetLog = [];
+        let time = 0;
+
+        const routers = [
+            { id: 0, name: 'R1', ip: '192.168.1.1', role: 'DR', x: 0, y: 0, color: '#3b82f6' },
+            { id: 1, name: 'R2', ip: '192.168.1.2', role: 'BDR', x: 0, y: 0, color: '#8b5cf6' },
+            { id: 2, name: 'R3', ip: '192.168.1.3', role: 'DROther', x: 0, y: 0, color: '#10b981' },
+            { id: 3, name: 'R4', ip: '192.168.1.4', role: 'DROther', x: 0, y: 0, color: '#f59e0b' },
+            { id: 4, name: 'R5', ip: '192.168.1.5', role: 'DROther', x: 0, y: 0, color: '#ec4899' }
+        ];
+
+        const links = [
+            { id: 0, r1: 0, r2: 1, name: 'R1-R2', state: 'Down' },
+            { id: 1, r1: 0, r2: 2, name: 'R1-R3', state: 'Down' },
+            { id: 2, r1: 0, r2: 3, name: 'R1-R4', state: 'Down' },
+            { id: 3, r1: 0, r2: 4, name: 'R1-R5', state: 'Down' },
+            { id: 4, r1: 1, r2: 2, name: 'R2-R3', state: 'Down' },
+            { id: 5, r1: 1, r2: 3, name: 'R2-R4', state: 'Down' },
+            { id: 6, r1: 3, r2: 4, name: 'R4-R5', state: 'Down' }
+        ];
+
+        const stateColors = {
+            'Down': '#64748b',
+            'Init': '#3b82f6',
+            '2-Way': '#8b5cf6',
+            'ExStart': '#a855f7',
+            'Exchange': '#c084fc',
+            'Loading': '#10b981',
+            'Full': '#22c55e'
+        };
+
+        // 精简为 10 个核心步骤
+        const steps = [
+            {
+                phase: 1, phaseTitle: '初始状态', phaseIcon: '📍', title: '网络启动',
+                narration: `<p>网络刚启动，所有 5 台路由器都处于 <strong>Down</strong> 状态。</p><p>所有链路状态均为 Down，尚未建立任何邻居关系。</p><p class="warning">⚠️ Attempt 状态仅用于 NBMA 网络，广播网络直接从 Down → Init</p>`,
+                packets: [], linkStates: ['Down', 'Down', 'Down', 'Down', 'Down', 'Down', 'Down']
+            },
+            {
+                phase: 2, phaseTitle: '邻居发现', phaseIcon: '🔍', title: '发送 Hello 报文',
+                narration: `<p>R1 向组播地址 <span class="highlight">224.0.0.5</span> 发送 Hello 报文。</p><p>所有直连路由器 (R2-R5) 都会收到此 Hello 报文。</p><p>Hello 报文包含 Router ID、Area ID、Hello Interval 等信息。</p>`,
+                packets: [{from:0,to:1,type:'hello'},{from:0,to:2,type:'hello'},{from:0,to:3,type:'hello'},{from:0,to:4,type:'hello'}],
+                linkStates: ['Init', 'Init', 'Init', 'Init', 'Down', 'Down', 'Down']
+            },
+            {
+                phase: 3, phaseTitle: '双向通信', phaseIcon: '🤝', title: '2-Way 状态建立',
+                narration: `<p>邻居回复 Hello 报文，R1 在 Neighbor 字段看到自己的 Router ID。</p><p><strong>所有链路状态：Init → 2-Way</strong></p><p>双向通信已建立，双方都确认了对方的存在。</p>`,
+                packets: [{from:1,to:0,type:'hello'},{from:2,to:0,type:'hello'},{from:3,to:0,type:'hello'},{from:4,to:0,type:'hello'}],
+                linkStates: ['2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 4, phaseTitle: 'DR/BDR 选举', phaseIcon: '👑', title: '选举完成',
+                narration: `<p>在广播网络中选举 DR 和 BDR：</p><p><strong>DR:</strong> R1 (优先级 255 最高)</p><p><strong>BDR:</strong> R2 (优先级 100 次高)</p><p><strong>DROther:</strong> R3, R4, R5</p><p>DR/BDR 负责与其他路由器建立完全邻接关系。</p>`,
+                packets: [], linkStates: ['2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 5, phaseTitle: 'ExStart', phaseIcon: '📋', title: '协商主从关系',
+                narration: `<p>DR (R1) 与 BDR (R2) 开始数据库同步。</p><p><strong>链路 R1-R2 状态：2-Way → ExStart</strong></p><p>通过交换空的 DD 报文协商主从关系 (Router ID 大者为主)。</p>`,
+                packets: [{from:0,to:1,type:'dd'}],
+                linkStates: ['ExStart', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 6, phaseTitle: 'Exchange', phaseIcon: '🔄', title: '交换 DD 报文',
+                narration: `<p><strong>链路 R1-R2 状态：ExStart → Exchange</strong></p><p>双方交换 DD (Database Description) 报文，描述各自 LSDB 的摘要。</p><p>DD 报文包含 LSA 头部信息，用于比对数据库差异。</p>`,
+                packets: [{from:0,to:1,type:'dd'},{from:1,to:0,type:'dd'}],
+                linkStates: ['Exchange', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 7, phaseTitle: 'Loading', phaseIcon: '⏳', title: 'LSR/LSU 交换',
+                narration: `<p><strong>链路 R1-R2 状态：Exchange → Loading → Full</strong></p><p>R2 发送 <span class="highlight">LSR</span> 请求缺失的 LSA，R1 回复 <span class="highlight">LSU</span> 包含完整 LSA 信息，R2 发送 <span class="highlight">LSAck</span> 确认。</p>`,
+                packets: [{from:1,to:0,type:'lsr'},{from:0,to:1,type:'lsu'},{from:1,to:0,type:'lsack'}],
+                linkStates: ['Full', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 8, phaseTitle: 'DR 同步', phaseIcon: '📡', title: 'DR 与 DROther 同步',
+                narration: `<p>DR (R1) 与所有 DROther (R3, R4, R5) 进行数据库同步。</p><p>同样经过 ExStart → Exchange → Loading → Full 过程。</p><p><strong>链路 R1-R3、R1-R4、R1-R5 → Full</strong></p>`,
+                packets: [{from:0,to:2,type:'dd'},{from:0,to:3,type:'dd'},{from:0,to:4,type:'dd'},{from:2,to:0,type:'lsack'},{from:3,to:0,type:'lsack'},{from:4,to:0,type:'lsack'}],
+                linkStates: ['Full', 'Full', 'Full', 'Full', '2-Way', '2-Way', '2-Way']
+            },
+            {
+                phase: 9, phaseTitle: 'BDR 同步', phaseIcon: '📡', title: 'BDR 与 DROther 同步',
+                narration: `<p>BDR (R2) 与 DROther (R3, R4) 进行数据库同步。</p><p><strong>链路 R2-R3、R2-R4 → Full</strong></p><p>注意：DROther 之间 (R4-R5) 保持 2-Way 状态，不建立完全邻接。</p>`,
+                packets: [{from:1,to:2,type:'dd'},{from:1,to:3,type:'dd'},{from:2,to:1,type:'lsack'},{from:3,to:1,type:'lsack'}],
+                linkStates: ['Full', 'Full', 'Full', 'Full', 'Full', 'Full', '2-Way']
+            },
+            {
+                phase: 10, phaseTitle: '邻接建立完成', phaseIcon: '✅', title: 'Full 状态',
+                narration: `<p style="color:#22c55e;font-size:1rem;"><strong>✓ OSPF 邻居建立演示完成！</strong></p><p>所有 DR/BDR 相关链路已达 <span class="highlight">Full</span> 状态。</p><p>所有路由器的 LSDB 已完全同步，可以开始运行 SPF 算法计算最短路径。</p><p>点击"重置"重新开始演示。</p>`,
+                packets: [{from:0,to:1,type:'hello'},{from:0,to:2,type:'hello'},{from:0,to:3,type:'hello'},{from:0,to:4,type:'hello'}],
+                linkStates: ['Full', 'Full', 'Full', 'Full', 'Full', 'Full', '2-Way']
+            }
+        ];
+
+        const packetColors = {
+            hello: { start: '#3b82f6', end: '#2563eb' },
+            dd: { start: '#8b5cf6', end: '#7c3aed' },
+            lsr: { start: '#f59e0b', end: '#d97706' },
+            lsu: { start: '#10b981', end: '#059669' },
+            lsack: { start: '#ec4899', end: '#db2777' }
+        };
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width / window.devicePixelRatio;
+                this.y = Math.random() * canvas.height / window.devicePixelRatio;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 2 + 1;
+                this.alpha = Math.random() * 0.5 + 0.15;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width / window.devicePixelRatio) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height / window.devicePixelRatio) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(59, 130, 246, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        class Packet {
+            constructor(type, from, to, delay = 0) {
+                this.type = type; this.from = from; this.to = to;
+                this.delay = delay; this.progress = 0; this.completed = false;
+                this.size = 0; this.maxSize = 18;
+                this.startTime = Date.now() + delay; this.started = false;
+            }
+            update() {
+                if (!this.started && Date.now() >= this.startTime) this.started = true;
+                if (this.started && this.progress < 1) {
+                    this.progress += 0.006;
+                    if (this.size < this.maxSize) this.size += 0.6;
+                } else if (this.progress >= 1) {
+                    this.completed = true;
+                }
+            }
+            draw() {
+                if (!this.started) return;
+                const r1 = routers[this.from], r2 = routers[this.to];
+                const x = r1.x + (r2.x - r1.x) * this.progress;
+                const y = r1.y + (r2.y - r1.y) * this.progress;
+                const colors = packetColors[this.type];
+                
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.size * 2.5);
+                gradient.addColorStop(0, colors.start + '90');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath(); ctx.arc(x, y, this.size * 2.5, 0, Math.PI * 2); ctx.fill();
+                
+                ctx.save(); ctx.translate(x, y); ctx.rotate(this.progress * Math.PI * 2);
+                const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                grad.addColorStop(0, colors.start); grad.addColorStop(1, colors.end);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2;
+                    const px = Math.cos(a) * this.size, py = Math.sin(a) * this.size;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.closePath(); ctx.fill(); ctx.restore();
+                
+                ctx.fillStyle = 'white'; ctx.font = 'bold 11px Inter';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(this.type.toUpperCase(), x, y);
+            }
+        }
+
+        for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+        function updateRouterPositions() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cx = w / 2, cy = h / 2;
+            const rx = w * 0.22, ry = h * 0.28;
+            
+            routers[0].x = cx; routers[0].y = cy;
+            routers[1].x = cx - rx; routers[1].y = cy - ry;
+            routers[2].x = cx - rx; routers[2].y = cy + ry;
+            routers[3].x = cx + rx; routers[3].y = cy - ry;
+            routers[4].x = cx + rx; routers[4].y = cy + ry;
+        }
+
+        function drawRouter(router) {
+            const pulse = Math.sin(time * 2) * 4;
+            
+            const glow = ctx.createRadialGradient(router.x, router.y, 30, router.x, router.y, 65 + pulse);
+            glow.addColorStop(0, router.color + '30');
+            glow.addColorStop(1, 'transparent');
+            ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(router.x, router.y, 65 + pulse, 0, Math.PI * 2); ctx.fill();
+            
+            const grad = ctx.createLinearGradient(router.x - 32, router.y - 32, router.x + 32, router.y + 32);
+            grad.addColorStop(0, router.color); grad.addColorStop(1, router.color + 'cc');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(router.x - 32, router.y - 32, 64, 64, 10); ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(router.x - 20, router.y - 16, 40, 5);
+            ctx.fillRect(router.x - 20, router.y - 5, 40, 5);
+            ctx.fillRect(router.x - 20, router.y + 6, 40, 5);
+            
+            ctx.strokeStyle = '#64748b'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(router.x, router.y - 32); ctx.lineTo(router.x, router.y - 48); ctx.stroke();
+            ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(router.x, router.y - 52, 5, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = 'white'; ctx.font = 'bold 16px Inter'; ctx.textAlign = 'center';
+            ctx.fillText(router.name, router.x, router.y + 55);
+            ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '11px Inter';
+            ctx.fillText(router.ip, router.x, router.y + 70);
+            ctx.fillStyle = router.color; ctx.font = 'bold 11px Inter';
+            ctx.fillText(router.role, router.x, router.y + 85);
+        }
+
+        function drawLinks() {
+            links.forEach(link => {
+                const r1 = routers[link.r1], r2 = routers[link.r2];
+                const color = stateColors[link.state] || '#64748b';
+                const isFull = link.state === 'Full', is2Way = link.state === '2-Way';
+                
+                ctx.strokeStyle = isFull ? '#22c55e' : (is2Way ? '#8b5cf6' : color);
+                ctx.lineWidth = isFull ? 5 : (is2Way ? 3 : 2);
+                
+                if (!isFull) {
+                    ctx.setLineDash([10, 5]);
+                    ctx.lineDashOffset = -(time * 30) % 15;
+                } else {
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.beginPath(); ctx.moveTo(r1.x, r1.y); ctx.lineTo(r2.x, r2.y); ctx.stroke();
+                ctx.setLineDash([]);
+                
+                const mx = (r1.x + r2.x) / 2, my = (r1.y + r2.y) / 2;
+                ctx.fillStyle = color + '40'; ctx.beginPath(); ctx.roundRect(mx - 28, my - 11, 56, 22, 5); ctx.fill();
+                ctx.fillStyle = color; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(link.state, mx, my);
+            });
+        }
+
+        function drawLabels() {
+            const w = canvas.width / window.devicePixelRatio;
+            ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+            ctx.fillText('OSPF Area 0 (骨干区域)', w / 2, 28);
+            ctx.fillStyle = 'rgba(59,130,246,0.95)'; ctx.font = 'bold 12px Inter';
+            ctx.fillText('DR', routers[0].x, routers[0].y - 70);
+            ctx.fillStyle = 'rgba(139,92,246,0.95)';
+            ctx.fillText('BDR', routers[1].x, routers[1].y - 70);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+            time += 0.016;
+            updateRouterPositions();
+            particles.forEach(p => { p.update(); p.draw(); });
+            drawLinks();
+            drawLabels();
+            routers.forEach(r => drawRouter(r));
+            packets = packets.filter(p => !p.completed);
+            packets.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(render);
+        }
+
+        function generateStepNav() {
+            const grid = document.getElementById('step-nav-grid');
+            let html = '';
+            for (let i = 0; i < steps.length; i++) {
+                let cls = 'step-nav-item';
+                if (i < currentStep) cls += ' completed';
+                if (i === currentStep) cls += ' active';
+                html += `<button class="${cls}" onclick="goToStep(${i})" ${i > currentStep + 1 ? 'disabled' : ''}>${i + 1}</button>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        function updateUI() {
+            const step = steps[currentStep];
+            
+            document.getElementById('info-icon').textContent = step.phaseIcon;
+            document.getElementById('info-title').textContent = step.title;
+            document.getElementById('info-phase').textContent = `步骤 ${currentStep + 1} of ${steps.length} | ${step.phaseTitle}`;
+            document.getElementById('info-content').innerHTML = step.narration;
+            
+            document.getElementById('step-display').textContent = `${currentStep + 1} / ${steps.length}`;
+            const progress = ((currentStep + 1) / steps.length) * 100;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+            
+            links.forEach((link, i) => { link.state = step.linkStates[i] || 'Down'; });
+            
+            const linkList = document.getElementById('link-state-list');
+            linkList.innerHTML = links.map(link => `
+                <div class="link-state-item">
+                    <div class="link-state-dot" style="background: ${stateColors[link.state]}"></div>
+                    <div class="link-state-name">${link.name}</div>
+                    <div class="link-state-badge state-${link.state.toLowerCase().replace('-', '')}">${link.state}</div>
+                </div>
+            `).join('');
+            
+            if (step.packets.length > 0) {
+                packets = [];
+                packetLog = [];
+                step.packets.forEach((p, i) => {
+                    packets.push(new Packet(p.type, p.from, p.to, i * 250));
+                    packetLog.push({ type: p.type, from: routers[p.from].name, to: routers[p.to].name });
+                });
+            }
+            
+            const logList = document.getElementById('packet-log-list');
+            if (packetLog.length === 0) {
+                logList.innerHTML = '<div class="packet-log-item"><div class="packet-log-dot" style="background:#64748b"></div><div>暂无报文</div></div>';
+            } else {
+                logList.innerHTML = packetLog.map(log => `
+                    <div class="packet-log-item">
+                        <div class="packet-log-dot" style="background: ${packetColors[log.type].start}"></div>
+                        <div>${log.type.toUpperCase()} ${log.from} → ${log.to}</div>
+                    </div>
+                `).join('');
+            }
+            
+            generateStepNav();
+            
+            const nextBtn = document.getElementById('next-btn');
+            if (currentStep >= steps.length - 1) {
+                nextBtn.disabled = true;
+                nextBtn.innerHTML = '<span>✓ 完成</span>';
+            } else {
+                nextBtn.disabled = false;
+                nextBtn.innerHTML = '<span>下一步 →</span>';
+            }
+        }
+
+        function goToStep(i) {
+            if (i >= 0 && i < steps.length) {
+                currentStep = i;
+                packets = [];
+                packetLog = [];
+                updateUI();
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                goToStep(currentStep + 1);
+            }
+        }
+
+        function resetAnimation() {
+            currentStep = 0;
+            packets = [];
+            packetLog = [];
+            links.forEach(l => l.state = 'Down');
+            updateUI();
+        }
+
+        render();
+        updateUI();
+    </script>
+</body>
+</html>
+

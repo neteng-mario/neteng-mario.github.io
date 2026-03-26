@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络协议可视化演示</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.8);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .hero-diagram {
+            display: flex;
+            justify-content: center;
+            margin: 60px 0;
+            perspective: 1000px;
+        }
+
+        .diagram-wrapper {
+            position: relative;
+            padding: 40px;
+        }
+
+        .diagram-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 300px;
+            background: radial-gradient(ellipse, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .as-box {
+            position: absolute;
+            border: 2px dashed;
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.5s ease;
+        }
+
+        .as-box:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .as100 {
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .as100:hover {
+            transform: translateY(-50%) scale(1.02);
+        }
+
+        .as200 {
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .as200:hover {
+            transform: translateY(-50%) scale(1.02);
+        }
+
+        .as-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--bg-primary);
+            padding: 4px 12px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 6px;
+        }
+
+        .as100 .as-label {
+            color: var(--accent-blue);
+        }
+
+        .as200 .as-label {
+            color: var(--accent-green);
+        }
+
+        .router {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            margin: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .router::after {
+            content: attr(data-role);
+            position: absolute;
+            bottom: -20px;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+        }
+
+        .router:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px currentColor;
+        }
+
+        .router-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .ebgp-link {
+            position: absolute;
+            top: 50%;
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+            transform: translateY(-50%);
+            border-radius: 2px;
+        }
+
+        .ebgp-link::before {
+            content: 'eBGP';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent-orange);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .section-title h2 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .section-title p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            margin-bottom: 80px;
+        }
+
+        .project-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-blue);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .project-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .project-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            background: rgba(59, 130, 246, 0.15);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent-blue);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 80px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 16px;
+        }
+
+        .feature-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        footer {
+            text-align: center;
+            padding-top: 40px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 16px;
+            }
+
+            .as-box {
+                position: relative;
+                transform: none !important;
+                margin: 20px 0;
+            }
+
+            .as-box:hover {
+                transform: scale(1.02) !important;
+            }
+
+            .hero-diagram {
+                flex-direction: column;
+                align-items: center;
+                gap: 40px;
+            }
+
+            .diagram-wrapper {
+                display: flex;
+                flex-direction: column;
+                gap: 40px;
+            }
+
+            .diagram-wrapper::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">🌐</div>
+                <span class="logo-text">网络协议可视化</span>
+            </div>
+            <p class="subtitle">
+                交互式网络协议动画演示，通过动态可视化帮助理解 BGP、OSPF
+                等核心路由协议的工作原理
+            </p>
+        </header>
+
+        <div class="hero-diagram">
+            <div class="diagram-wrapper">
+                <div class="as-box as100">
+                    <span class="as-label">AS 100</span>
+                    <div class="router-row">
+                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="RR">R2</div>
+                    </div>
+                    <div class="router-row">
+                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="Client">R3</div>
+                        <div class="router" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6;" data-role="Client">R4</div>
+                    </div>
+                </div>
+
+                <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px;">
+                    <div class="router" style="background: rgba(156, 163, 175, 0.2); border: 2px solid #9ca3af; color: #9ca3af; width: 60px; height: 60px; font-size: 16px; margin: 0;" data-role="eBGP">R1</div>
+                </div>
+
+                <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px; margin-left: 100px;">
+                    <div class="router" style="background: rgba(156, 163, 175, 0.2); border: 2px solid #9ca3af; color: #9ca3af; width: 60px; height: 60px; font-size: 16px; margin: 0;" data-role="eBGP">R5</div>
+                </div>
+
+                <div class="as-box as200">
+                    <span class="as-label">AS 200</span>
+                    <div class="router-row">
+                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="RR">R6</div>
+                    </div>
+                    <div class="router-row">
+                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="Client">R7</div>
+                        <div class="router" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #10b981;" data-role="Client">R8</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section>
+            <div class="section-title">
+                <h2>演示项目</h2>
+                <p>点击卡片进入交互式动画演示</p>
+            </div>
+
+            <div class="projects-grid">
+                <a href="bgp/新建 文本文档.html" class="project-card">
+                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));">
+                        🔄
+                    </div>
+                    <h3>BGP 路由反射器</h3>
+                    <p>
+                        演示 BGP 协议中路由反射器(Route Reflector)的工作机制，
+                        理解 iBGP 路由在 AS 内部的反射过程
+                    </p>
+                    <div class="project-tags">
+                        <span class="tag">BGP</span>
+                        <span class="tag">iBGP</span>
+                        <span class="tag">Route Reflector</span>
+                        <span class="tag">路由反射</span>
+                    </div>
+                </a>
+
+                <a href="ospf/ospf.html" class="project-card">
+                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
+                        🌿
+                    </div>
+                    <h3>OSPF 协议演示</h3>
+                    <p>
+                        演示 OSPF 动态路由协议的工作机制，
+                        理解链路状态路由和最短路径优先算法
+                    </p>
+                    <div class="project-tags">
+                        <span class="tag">OSPF</span>
+                        <span class="tag">链路状态</span>
+                        <span class="tag">LSA</span>
+                        <span class="tag">SPF</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <div class="section-title">
+                <h2>核心特性</h2>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(59, 130, 246, 0.15);">
+                        🎬
+                    </div>
+                    <h4>分步动画演示</h4>
+                    <p>逐步展示路由协议的工作流程，便于教学和理解</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16, 185, 129, 0.15);">
+                        📊
+                    </div>
+                    <h4>实时路由表</h4>
+                    <p>动态展示每台设备的路由表变化过程</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(139, 92, 246, 0.15);">
+                        🔀
+                    </div>
+                    <h4>数据包追踪</h4>
+                    <p>可视化数据包的发送、接收和转发过程</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(245, 158, 11, 0.15);">
+                        🎨
+                    </div>
+                    <h4>清晰配色</h4>
+                    <p>不同 AS、设备类型使用不同颜色区分</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>
+                基于 HTML5 Canvas + JavaScript 构建 ·
+                <a href="https://github.com">GitHub</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
