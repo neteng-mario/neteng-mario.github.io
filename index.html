@@ -15,27 +15,26 @@
         }
 
         :root {
-            --bg-primary: #0a0e1a;
-            --bg-secondary: #111827;
-            --bg-card: rgba(17, 24, 39, 0.8);
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --text-tertiary: #6b7280;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-purple: #8b5cf6;
-            --accent-orange: #f59e0b;
-            --accent-red: #ef4444;
-            --accent-cyan: #06b6d4;
+            --bg-primary: #000;
+            --bg-secondary: #1d1d1f;
+            --bg-card: #161617;
+            --bg-card-hover: #1a1a1c;
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --accent-blue: #2997ff;
+            --accent-green: #30d158;
+            --accent-purple: #bf5af2;
+            --accent-orange: #ff9f0a;
+            --accent-red: #ff453a;
             --border-color: rgba(255, 255, 255, 0.1);
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
         .bg-grid {
@@ -102,53 +101,64 @@
         .category-nav {
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 6px;
             margin: 48px 0;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
             flex-wrap: wrap;
         }
 
         .category-btn {
-            padding: 10px 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 100px;
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-radius: 14px;
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .category-btn:hover,
-        .category-btn.active {
+        .category-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .category-btn.ospf.active {
             background: var(--accent-blue);
-            border-color: var(--accent-blue);
-            color: white;
+            color: #fff;
         }
 
-        .category-btn.protocol { }
-        .category-btn.protocol:hover,
-        .category-btn.protocol.active {
-            background: var(--accent-blue);
-            border-color: var(--accent-blue);
+        .category-btn.bgp.active {
+            background: var(--text-primary);
+            color: #000;
         }
 
-        .category-btn.tool:hover,
         .category-btn.tool.active {
-            background: var(--accent-green);
-            border-color: var(--accent-green);
+            background: var(--accent-orange);
+            color: #000;
         }
 
-        .category-btn.ebook:hover,
-        .category-btn.ebook.active {
-            background: var(--accent-orange);
-            border-color: var(--accent-orange);
+        .category-btn .icon {
+            font-size: 18px;
         }
 
         .section-title {
             text-align: center;
             margin-bottom: 48px;
+        }
+
+        .section-title .icon {
+            font-size: 32px;
         }
 
         .section-title h2 {
@@ -161,28 +171,39 @@
             gap: 12px;
         }
 
-        .section-title h2 .icon {
-            font-size: 24px;
-        }
-
         .section-title p {
             color: var(--text-secondary);
-            font-size: 15px;
+            font-size: 16px;
+        }
+
+        #ospf, #bgp, #tools {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .projects-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
             margin-bottom: 80px;
         }
 
         .project-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 28px;
-            transition: all 0.3s ease;
+            border-radius: 24px;
+            padding: 36px;
+            transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             text-decoration: none;
             color: inherit;
@@ -197,44 +218,112 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--card-accent), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
         }
 
         .project-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--card-accent, var(--accent-blue));
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            background: var(--bg-card-hover);
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
         }
 
-        .project-card:hover::before {
-            opacity: 1;
-        }
-
-        .project-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
+        .project-card .card-arrow {
+            position: absolute;
+            top: 36px;
+            right: 36px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            margin-bottom: 16px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: all 0.3s ease;
         }
 
+        .project-card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .coming-soon-card {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .coming-soon-card:hover {
+            transform: none;
+            background: var(--bg-card);
+            box-shadow: none;
+        }
+
+        .coming-soon {
+            display: inline-block;
+            background: rgba(255, 159, 10, 0.12);
+            color: var(--accent-orange);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+            cursor: default;
+        }
+
+        .coming-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(255, 159, 10, 0.12);
+            color: var(--accent-orange);
+            border-radius: 980px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        .tag.ospf {
+            background: rgba(168, 85, 247, 0.15);
+            color: #a855f7;
+        }
+
+        .tag.bgp {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .project-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin-bottom: 24px;
+        }
+
+        .project-icon.green { background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(168, 85, 247, 0.08)); }
+        .project-icon.purple { background: linear-gradient(135deg, rgba(191, 90, 242, 0.2), rgba(191, 90, 242, 0.05)); }
+        .project-icon.blue { background: linear-gradient(135deg, rgba(41, 151, 255, 0.2), rgba(41, 151, 255, 0.05)); }
+        .project-icon.orange { background: linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 159, 10, 0.05)); }
+
         .project-card h3 {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
         }
 
         .project-card p {
             color: var(--text-secondary);
-            font-size: 13px;
-            line-height: 1.6;
-            margin-bottom: 16px;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 20px;
         }
 
         .project-tags {
@@ -244,17 +333,17 @@
         }
 
         .tag {
-            padding: 3px 8px;
-            background: rgba(59, 130, 246, 0.15);
-            border-radius: 4px;
-            font-size: 11px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 980px;
+            font-size: 12px;
             font-weight: 500;
-            color: var(--accent-blue);
+            color: var(--text-secondary);
         }
 
-        .tag.protocol { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
-        .tag.tool { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
-        .tag.ebook { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .tag.protocol { background: rgba(41, 151, 255, 0.12); color: var(--accent-blue); }
+        .tag.tool { background: rgba(41, 151, 255, 0.12); color: var(--accent-blue); }
+        .tag.ebook { background: rgba(255, 159, 10, 0.12); color: var(--accent-orange); }
 
         .features {
             display: grid;
@@ -345,6 +434,7 @@
 
             .category-nav {
                 gap: 8px;
+                margin: 32px 0;
             }
 
             .category-btn {
@@ -380,33 +470,64 @@
         </header>
 
         <nav class="category-nav">
-            <a href="#protocols" class="category-btn protocol active" onclick="switchCategory('protocol', event)">🖥️ 协议演示</a>
-            <a href="#tools" class="category-btn tool" onclick="switchCategory('tool', event)">🛠️ 工具手册</a>
+            <a href="#ospf" class="category-btn ospf active" onclick="switchCategory('ospf')">🌿 OSPF</a>
+            <a href="#bgp" class="category-btn bgp" onclick="switchCategory('bgp')">🔴 BGP</a>
+            <a href="#tools" class="category-btn tool" onclick="switchCategory('tools')">🛠️ 工具手册</a>
         </nav>
 
-        <section id="protocols">
+        <section id="ospf">
             <div class="section-title">
-                <h2><span class="icon">🖥️</span> 协议动画演示</h2>
-                <p>交互式动画，深入理解网络协议工作原理</p>
+                <h2><span class="icon">🌿</span> OSPF 协议</h2>
+                <p>开放式最短路径优先协议，链路状态路由的代表</p>
             </div>
 
             <div class="projects-grid">
-                <a href="ospf/ospf.html" class="project-card" style="--card-accent: var(--accent-green);">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
-                        🌿
-                    </div>
-                    <h3>OSPF 协议演示</h3>
-                    <p>
-                        演示 OSPF 动态路由协议的工作机制，
-                        理解链路状态路由和最短路径优先算法
-                    </p>
+                <a href="ospf/ospf.html" class="project-card">
+                    <div class="project-icon green">🌿</div>
+                    <h3>OSPF 邻居建立</h3>
+                    <p>完整网络拓扑演示邻居关系建立过程，包含 Hello 报文交换、DR/BDR 选举、LSDB 同步</p>
                     <div class="project-tags">
-                        <span class="tag protocol">OSPF</span>
-                        <span class="tag protocol">链路状态</span>
-                        <span class="tag protocol">LSA</span>
-                        <span class="tag protocol">SPF</span>
+                        <span class="tag protocol">邻居建立</span>
+                        <span class="tag protocol">LSDB</span>
+                        <span class="tag protocol">DR/BDR</span>
                     </div>
+                    <div class="card-arrow">→</div>
                 </a>
+
+                <a href="ospf/ospf-states.html" class="project-card">
+                    <div class="project-icon purple">📊</div>
+                    <h3>OSPF 邻居状态机</h3>
+                    <p>双机交互模拟，7 种邻居状态机可视化，失败回退机制、RFC 2328 规则详解</p>
+                    <div class="project-tags">
+                        <span class="tag protocol">状态机</span>
+                        <span class="tag protocol">失败回退</span>
+                        <span class="tag protocol">RFC 2328</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+            </div>
+        </section>
+
+        <section id="bgp">
+            <div class="section-title">
+                <h2><span class="icon">🔴</span> BGP 协议</h2>
+                <p>边界网关协议，互联网核心路由协议</p>
+                <span class="coming-soon">更多内容更新中...</span>
+            </div>
+
+            <div class="projects-grid">
+                <div class="project-card coming-soon-card">
+                    <div class="project-icon blue">🔴</div>
+                    <h3>BGP 路由反射器</h3>
+                    <p>路由反射器原理演示，iBGP 路由传递规则，客户端与非客户端路由反射</p>
+                    <div class="project-tags">
+                        <span class="tag protocol">BGP</span>
+                        <span class="tag protocol">路由反射</span>
+                        <span class="tag protocol">iBGP</span>
+                        <span class="tag protocol">coming soon</span>
+                    </div>
+                    <div class="coming-badge">··· 即将上线</div>
+                </div>
             </div>
         </section>
 
@@ -417,90 +538,41 @@
             </div>
 
             <div class="projects-grid">
-                <a href="手册/网工入门・8 个排障必备命令 图文速查手册 (1) (1).pdf" class="project-card" style="--card-accent: var(--accent-orange);">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));">
-                        📚
-                    </div>
+                <a href="手册/网工入门・8 个排障必备命令 图文速查手册 (1) (1).pdf" class="project-card">
+                    <div class="project-icon orange">📚</div>
                     <h3>排障必备命令速查</h3>
-                    <p>
-                        8 个网络故障排查必备命令速查手册，
-                        包含 ping、traceroute、netstat 等常用工具详解
-                    </p>
+                    <p>8 个网络故障排查必备命令速查手册，包含 ping、traceroute、netstat 等常用工具详解</p>
                     <div class="project-tags">
                         <span class="tag tool">PDF</span>
                         <span class="tag tool">排障</span>
                         <span class="tag tool">速查</span>
                     </div>
+                    <div class="card-arrow">→</div>
                 </a>
 
-                <a href="docs/bgp-manual.html" class="project-card" style="--card-accent: var(--accent-blue);">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));">
-                        📖
-                    </div>
+                <a href="docs/bgp-manual.html" class="project-card">
+                    <div class="project-icon blue">📖</div>
                     <h3>BGP 协议手册</h3>
-                    <p>
-                        详细介绍 BGP 路由协议的工作原理，
-                        包括 AS、iBGP、eBGP、路由反射器等核心概念
-                    </p>
+                    <p>详细介绍 BGP 路由协议的工作原理，包括 AS、iBGP、eBGP、路由反射器等核心概念</p>
                     <div class="project-tags">
                         <span class="tag tool">BGP</span>
                         <span class="tag tool">AS_PATH</span>
                         <span class="tag tool">路由反射</span>
                     </div>
+                    <div class="card-arrow">→</div>
                 </a>
 
-                <a href="docs/ospf-manual.html" class="project-card" style="--card-accent: var(--accent-green);">
-                    <div class="project-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));">
-                        📖
-                    </div>
+                <a href="docs/ospf-manual.html" class="project-card">
+                    <div class="project-icon green">📖</div>
                     <h3>OSPF 协议手册</h3>
-                    <p>
-                        详细介绍 OSPF 链路状态路由协议，
-                        包含 LSA、DR/BDR、区域划分等核心概念
-                    </p>
+                    <p>详细介绍 OSPF 链路状态路由协议，包含 LSA、DR/BDR、区域划分等核心概念</p>
                     <div class="project-tags">
                         <span class="tag tool">OSPF</span>
                         <span class="tag tool">LSA</span>
                         <span class="tag tool">SPF</span>
                     </div>
+                    <div class="card-arrow">→</div>
                 </a>
-            </div>
-        </section>
-
-        <section>
-            <div class="section-title">
-                <h2><span class="icon">✨</span> 项目特点</h2>
-            </div>
-
-            <div class="features">
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(59, 130, 246, 0.15);">
-                        🎯
-                    </div>
-                    <h4>协议可视化</h4>
-                    <p>通过动画直观展示协议工作流程</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(16, 185, 129, 0.15);">
-                        ⚡
-                    </div>
-                    <h4>交互演示</h4>
-                    <p>可控制播放进度，深入理解每一步</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(139, 92, 246, 0.15);">
-                        📖
-                    </div>
-                    <h4>手册速查</h4>
-                    <p>常用命令和协议概念快速查阅</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="background: rgba(245, 158, 11, 0.15);">
-                        🎨
-                    </div>
-                    <h4>清晰配色</h4>
-                    <p>不同 AS、设备类型使用不同颜色区分</p>
-                </div>
             </div>
         </section>
 
@@ -513,25 +585,29 @@
     </div>
 
     <script>
-        function switchCategory(category, e) {
-            e.preventDefault();
+        function switchCategory(category) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('href') === '#' + category) {
+                    btn.classList.add('active');
+                }
+            });
 
-            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
-            e.target.classList.add('active');
-
-            const protocolsSection = document.getElementById('protocols');
-            const toolsSection = document.getElementById('tools');
-
-            if (category === 'protocol') {
-                protocolsSection.style.display = 'block';
-                toolsSection.style.display = 'none';
-            } else if (category === 'tool') {
-                protocolsSection.style.display = 'none';
-                toolsSection.style.display = 'block';
-            }
+            const sections = ['ospf', 'bgp', 'tools'];
+            sections.forEach(id => {
+                const section = document.getElementById(id);
+                if (id === category) {
+                    section.style.display = 'block';
+                    section.style.animation = 'none';
+                    section.offsetHeight;
+                    section.style.animation = 'fadeIn 0.4s ease-out';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
         }
 
-        switchCategory('protocol', { preventDefault: () => {}, target: document.querySelector('.category-btn.protocol') });
+        switchCategory('ospf');
     </script>
 </body>
 </html>

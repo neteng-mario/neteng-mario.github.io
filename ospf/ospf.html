@@ -4,21 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OSPF 邻居建立过程 - 精简演示</title>
+
+    <link rel="stylesheet" href="../assets/styles/base.css">
+    <script src="../assets/theme.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-primary: #0a0e1a;
+            --ospf-gradient-start: #0f172a;
+            --ospf-gradient-mid: #1e293b;
+            --header-bg: rgba(255, 255, 255, 0.05);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.1);
         }
-        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--ospf-gradient-start) 0%, var(--ospf-gradient-mid) 50%, var(--ospf-gradient-start) 100%);
             min-height: 100vh;
             color: white;
             overflow: hidden;
         }
-        
+
         .container {
             max-width: 1920px;
             margin: 0 auto;
@@ -27,100 +40,100 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 16px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--header-bg);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
+            border-radius: var(--border-radius-lg);
             margin-bottom: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
         }
-        
+
         .title-section h1 {
             font-size: 1.3rem;
             font-weight: 800;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), #ec4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .title-section p {
-            color: #94a3b8;
+            color: var(--text-secondary);
             font-size: 0.75rem;
             margin-top: 2px;
         }
-        
+
         .controls {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         .step-display {
             background: rgba(59, 130, 246, 0.2);
             border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 8px;
+            border-radius: var(--border-radius-md);
             padding: 6px 14px;
             text-align: center;
         }
-        
+
         .step-label {
             font-size: 0.6rem;
-            color: #94a3b8;
+            color: var(--text-tertiary);
             text-transform: uppercase;
         }
-        
+
         .step-value {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #3b82f6;
+            color: var(--accent-blue);
         }
-        
+
         .btn {
             padding: 10px 18px;
-            border-radius: 8px;
+            border-radius: var(--border-radius-md);
             font-weight: 600;
             font-size: 0.8rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             border: none;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        
+
         .btn-next {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
             color: white;
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }
-        
+
         .btn-next:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
         }
-        
+
         .btn-next:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         .btn-reset {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
+
         .btn-reset:hover {
             background: rgba(255, 255, 255, 0.2);
         }
-        
+
         .main-content {
             display: grid;
             grid-template-columns: 1fr 320px;
@@ -128,164 +141,164 @@
             flex: 1;
             min-height: 0;
         }
-        
+
         .left-panel {
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .scene-container {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
             overflow: hidden;
             flex: 1;
             position: relative;
         }
-        
+
         #scene-canvas {
             width: 100%;
             height: 100%;
             display: block;
         }
-        
+
         .step-nav {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
+            border-radius: var(--border-radius-lg);
             padding: 10px 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        
+
         .step-nav-title {
             font-size: 0.75rem;
             font-weight: 700;
             white-space: nowrap;
         }
-        
+
         .step-nav-grid {
             display: flex;
             gap: 6px;
             flex: 1;
             overflow-x: auto;
         }
-        
+
         .step-nav-item {
             min-width: 42px;
             height: 42px;
-            border-radius: 8px;
+            border-radius: var(--border-radius-md);
             font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             border: 2px solid transparent;
             background: rgba(255, 255, 255, 0.05);
-            color: #94a3b8;
+            color: var(--text-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        
+
         .step-nav-item:hover:not(:disabled) {
             background: rgba(255, 255, 255, 0.15);
             color: white;
         }
-        
+
         .step-nav-item.active {
             background: rgba(59, 130, 246, 0.25);
-            border-color: #3b82f6;
-            color: #3b82f6;
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
             transform: scale(1.1);
         }
-        
+
         .step-nav-item.completed {
             background: rgba(34, 197, 94, 0.25);
-            border-color: #22c55e;
-            color: #22c55e;
+            border-color: var(--accent-green);
+            color: var(--accent-green);
         }
-        
+
         .step-nav-item:disabled {
             opacity: 0.3;
             cursor: not-allowed;
         }
-        
+
         .right-panel {
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
-        
+
         .info-card {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
-            border-radius: 12px;
+            border-radius: var(--border-radius-lg);
             padding: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
         }
-        
+
         .info-card-header {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 10px;
             padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--border-color);
         }
-        
+
         .info-card-icon {
             font-size: 1.3rem;
         }
-        
+
         .info-card-title {
             font-size: 0.95rem;
             font-weight: 700;
         }
-        
+
         .info-card-phase {
             font-size: 0.65rem;
-            color: #64748b;
+            color: var(--text-tertiary);
             margin-top: 2px;
         }
-        
+
         .info-card-content {
             line-height: 1.5;
             color: #cbd5e1;
             font-size: 0.75rem;
         }
-        
+
         .info-card-content p {
             margin-bottom: 6px;
         }
-        
+
         .info-card-content strong {
-            color: #3b82f6;
+            color: var(--accent-blue);
         }
-        
+
         .highlight {
             background: rgba(59, 130, 246, 0.25);
             padding: 2px 5px;
             border-radius: 3px;
         }
-        
+
         .warning {
             background: rgba(245, 158, 11, 0.25);
             padding: 2px 5px;
             border-radius: 3px;
-            color: #f59e0b;
+            color: var(--accent-orange);
         }
-        
+
         .link-state-list {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 5px;
         }
-        
+
         .link-state-item {
             display: flex;
             align-items: center;
@@ -294,49 +307,49 @@
             background: rgba(0, 0, 0, 0.25);
             border-radius: 6px;
         }
-        
+
         .link-state-dot {
             width: 7px;
             height: 7px;
             border-radius: 50%;
             flex-shrink: 0;
         }
-        
+
         .link-state-name {
             font-size: 0.65rem;
             font-weight: 600;
             flex: 1;
         }
-        
+
         .link-state-badge {
             padding: 2px 5px;
             border-radius: 3px;
             font-size: 0.55rem;
             font-weight: 700;
         }
-        
+
         .packet-log {
             background: rgba(0, 0, 0, 0.35);
-            border-radius: 8px;
+            border-radius: var(--border-radius-md);
             padding: 10px;
             flex: 1;
             overflow-y: auto;
         }
-        
+
         .packet-log-title {
             font-size: 0.6rem;
-            color: #64748b;
+            color: var(--text-tertiary);
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .packet-log-list {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
-        
+
         .packet-log-item {
             display: flex;
             align-items: center;
@@ -346,13 +359,13 @@
             border-radius: 5px;
             font-size: 0.7rem;
         }
-        
+
         .packet-log-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
         }
-        
+
         .progress-bar {
             height: 4px;
             background: rgba(255, 255, 255, 0.1);
@@ -360,22 +373,22 @@
             overflow: hidden;
             margin-top: 10px;
         }
-        
+
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), #ec4899);
             border-radius: 4px;
             transition: width 0.5s ease;
         }
-        
-        .state-down { background: rgba(100, 116, 139, 0.5); color: #94a3b8; }
-        .state-init { background: rgba(59, 130, 246, 0.5); color: #3b82f6; }
-        .state-2way { background: rgba(139, 92, 246, 0.5); color: #8b5cf6; }
+
+        .state-down { background: rgba(100, 116, 139, 0.5); color: var(--text-secondary); }
+        .state-init { background: rgba(59, 130, 246, 0.5); color: var(--accent-blue); }
+        .state-2way { background: rgba(139, 92, 246, 0.5); color: var(--accent-purple); }
         .state-exstart { background: rgba(168, 85, 247, 0.5); color: #a855f7; }
         .state-exchange { background: rgba(192, 132, 252, 0.5); color: #c084fc; }
-        .state-loading { background: rgba(16, 185, 129, 0.5); color: #10b981; }
-        .state-full { background: rgba(34, 197, 94, 0.5); color: #22c55e; }
-        
+        .state-loading { background: rgba(16, 185, 129, 0.5); color: var(--accent-green); }
+        .state-full { background: rgba(34, 197, 94, 0.5); color: var(--accent-green); }
+
         .legend-bar {
             display: flex;
             justify-content: center;
@@ -383,41 +396,31 @@
             gap: 16px;
             padding: 8px 14px;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
         }
-        
+
         .legend-item {
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        
+
         .legend-dot {
             width: 12px;
             height: 12px;
             border-radius: 3px;
         }
-        
+
         .legend-text {
             font-size: 0.7rem;
             color: #cbd5e1;
             font-weight: 500;
         }
-        
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 2px;
-        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 2px; }
     </style>
 </head>
 <body>
@@ -444,27 +447,27 @@
                 <div class="scene-container">
                     <canvas id="scene-canvas"></canvas>
                 </div>
-                
+
                 <div class="step-nav">
                     <div class="step-nav-title">步骤:</div>
                     <div class="step-nav-grid" id="step-nav-grid"></div>
                 </div>
-                
+
                 <div class="legend-bar">
                     <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"></div>
+                        <div class="legend-dot" style="background: linear-gradient(135deg, var(--accent-blue), #2563eb);"></div>
                         <span class="legend-text">Hello</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"></div>
+                        <div class="legend-dot" style="background: linear-gradient(135deg, var(--accent-purple), #7c3aed);"></div>
                         <span class="legend-text">DD</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #f59e0b, #d97706);"></div>
+                        <div class="legend-dot" style="background: linear-gradient(135deg, var(--accent-orange), #d97706);"></div>
                         <span class="legend-text">LSR</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+                        <div class="legend-dot" style="background: linear-gradient(135deg, var(--accent-green), #059669);"></div>
                         <span class="legend-text">LSU</span>
                     </div>
                     <div class="legend-item">
@@ -491,7 +494,7 @@
                         <div class="progress-fill" id="progress-fill" style="width: 10%"></div>
                     </div>
                 </div>
-                
+
                 <div class="info-card">
                     <div class="info-card-header">
                         <span style="font-size: 1.1rem;">🔗</span>
@@ -502,7 +505,7 @@
                     </div>
                     <div class="link-state-list" id="link-state-list"></div>
                 </div>
-                
+
                 <div class="info-card" style="flex: 1;">
                     <div class="info-card-header">
                         <span style="font-size: 1.1rem;">📦</span>
@@ -522,7 +525,9 @@
     <script>
         const canvas = document.getElementById('scene-canvas');
         const ctx = canvas.getContext('2d');
-        
+
+        const theme = window.NetDocTheme;
+
         function resizeCanvas() {
             const container = canvas.parentElement;
             canvas.width = container.clientWidth * window.devicePixelRatio;
@@ -538,12 +543,18 @@
         let packetLog = [];
         let time = 0;
 
+        const routerColors = {
+            DR: theme.deviceColors.dr,
+            BDR: theme.deviceColors.bdr,
+            DROther: theme.deviceColors.drother
+        };
+
         const routers = [
-            { id: 0, name: 'R1', ip: '192.168.1.1', role: 'DR', x: 0, y: 0, color: '#3b82f6' },
-            { id: 1, name: 'R2', ip: '192.168.1.2', role: 'BDR', x: 0, y: 0, color: '#8b5cf6' },
-            { id: 2, name: 'R3', ip: '192.168.1.3', role: 'DROther', x: 0, y: 0, color: '#10b981' },
-            { id: 3, name: 'R4', ip: '192.168.1.4', role: 'DROther', x: 0, y: 0, color: '#f59e0b' },
-            { id: 4, name: 'R5', ip: '192.168.1.5', role: 'DROther', x: 0, y: 0, color: '#ec4899' }
+            { id: 0, name: 'R1', ip: '192.168.1.1', role: 'DR', x: 0, y: 0, color: routerColors.DR },
+            { id: 1, name: 'R2', ip: '192.168.1.2', role: 'BDR', x: 0, y: 0, color: routerColors.BDR },
+            { id: 2, name: 'R3', ip: '192.168.1.3', role: 'DROther', x: 0, y: 0, color: routerColors.DROther },
+            { id: 3, name: 'R4', ip: '192.168.1.4', role: 'DROther', x: 0, y: 0, color: routerColors.DROther },
+            { id: 4, name: 'R5', ip: '192.168.1.5', role: 'DROther', x: 0, y: 0, color: routerColors.DROther }
         ];
 
         const links = [
@@ -557,16 +568,15 @@
         ];
 
         const stateColors = {
-            'Down': '#64748b',
-            'Init': '#3b82f6',
-            '2-Way': '#8b5cf6',
-            'ExStart': '#a855f7',
-            'Exchange': '#c084fc',
-            'Loading': '#10b981',
-            'Full': '#22c55e'
+            'Down': theme.ospf.states.down.color,
+            'Init': theme.ospf.states.init.color,
+            '2-Way': theme.ospf.states['2way'].color,
+            'ExStart': theme.ospf.states.exstart.color,
+            'Exchange': theme.ospf.states.exchange.color,
+            'Loading': theme.ospf.states.loading.color,
+            'Full': theme.ospf.states.full.color
         };
 
-        // 精简为 10 个核心步骤
         const steps = [
             {
                 phase: 1, phaseTitle: '初始状态', phaseIcon: '📍', title: '网络启动',
@@ -629,11 +639,11 @@
         ];
 
         const packetColors = {
-            hello: { start: '#3b82f6', end: '#2563eb' },
-            dd: { start: '#8b5cf6', end: '#7c3aed' },
-            lsr: { start: '#f59e0b', end: '#d97706' },
-            lsu: { start: '#10b981', end: '#059669' },
-            lsack: { start: '#ec4899', end: '#db2777' }
+            hello: { start: theme.packet.hello.color, end: '#2563eb' },
+            dd: { start: theme.packet.dbd.color, end: '#7c3aed' },
+            lsr: { start: theme.packet.lsr.color, end: '#d97706' },
+            lsu: { start: theme.packet.lsu.color, end: '#059669' },
+            lsack: { start: theme.packet.lsack.color, end: '#db2777' }
         };
 
         class Particle {
@@ -681,13 +691,13 @@
                 const x = r1.x + (r2.x - r1.x) * this.progress;
                 const y = r1.y + (r2.y - r1.y) * this.progress;
                 const colors = packetColors[this.type];
-                
+
                 const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.size * 2.5);
                 gradient.addColorStop(0, colors.start + '90');
                 gradient.addColorStop(1, 'transparent');
                 ctx.fillStyle = gradient;
                 ctx.beginPath(); ctx.arc(x, y, this.size * 2.5, 0, Math.PI * 2); ctx.fill();
-                
+
                 ctx.save(); ctx.translate(x, y); ctx.rotate(this.progress * Math.PI * 2);
                 const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
                 grad.addColorStop(0, colors.start); grad.addColorStop(1, colors.end);
@@ -699,7 +709,7 @@
                     if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
                 }
                 ctx.closePath(); ctx.fill(); ctx.restore();
-                
+
                 ctx.fillStyle = 'white'; ctx.font = 'bold 11px Inter';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(this.type.toUpperCase(), x, y);
@@ -713,7 +723,7 @@
             const h = canvas.height / window.devicePixelRatio;
             const cx = w / 2, cy = h / 2;
             const rx = w * 0.22, ry = h * 0.28;
-            
+
             routers[0].x = cx; routers[0].y = cy;
             routers[1].x = cx - rx; routers[1].y = cy - ry;
             routers[2].x = cx - rx; routers[2].y = cy + ry;
@@ -723,25 +733,25 @@
 
         function drawRouter(router) {
             const pulse = Math.sin(time * 2) * 4;
-            
+
             const glow = ctx.createRadialGradient(router.x, router.y, 30, router.x, router.y, 65 + pulse);
             glow.addColorStop(0, router.color + '30');
             glow.addColorStop(1, 'transparent');
             ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(router.x, router.y, 65 + pulse, 0, Math.PI * 2); ctx.fill();
-            
+
             const grad = ctx.createLinearGradient(router.x - 32, router.y - 32, router.x + 32, router.y + 32);
             grad.addColorStop(0, router.color); grad.addColorStop(1, router.color + 'cc');
             ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(router.x - 32, router.y - 32, 64, 64, 10); ctx.fill();
-            
+
             ctx.fillStyle = 'rgba(255,255,255,0.25)';
             ctx.fillRect(router.x - 20, router.y - 16, 40, 5);
             ctx.fillRect(router.x - 20, router.y - 5, 40, 5);
             ctx.fillRect(router.x - 20, router.y + 6, 40, 5);
-            
+
             ctx.strokeStyle = '#64748b'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(router.x, router.y - 32); ctx.lineTo(router.x, router.y - 48); ctx.stroke();
             ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(router.x, router.y - 52, 5, 0, Math.PI * 2); ctx.fill();
-            
+
             ctx.fillStyle = 'white'; ctx.font = 'bold 16px Inter'; ctx.textAlign = 'center';
             ctx.fillText(router.name, router.x, router.y + 55);
             ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '11px Inter';
@@ -755,20 +765,20 @@
                 const r1 = routers[link.r1], r2 = routers[link.r2];
                 const color = stateColors[link.state] || '#64748b';
                 const isFull = link.state === 'Full', is2Way = link.state === '2-Way';
-                
+
                 ctx.strokeStyle = isFull ? '#22c55e' : (is2Way ? '#8b5cf6' : color);
                 ctx.lineWidth = isFull ? 5 : (is2Way ? 3 : 2);
-                
+
                 if (!isFull) {
                     ctx.setLineDash([10, 5]);
                     ctx.lineDashOffset = -(time * 30) % 15;
                 } else {
                     ctx.setLineDash([]);
                 }
-                
+
                 ctx.beginPath(); ctx.moveTo(r1.x, r1.y); ctx.lineTo(r2.x, r2.y); ctx.stroke();
                 ctx.setLineDash([]);
-                
+
                 const mx = (r1.x + r2.x) / 2, my = (r1.y + r2.y) / 2;
                 ctx.fillStyle = color + '40'; ctx.beginPath(); ctx.roundRect(mx - 28, my - 11, 56, 22, 5); ctx.fill();
                 ctx.fillStyle = color; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -813,18 +823,18 @@
 
         function updateUI() {
             const step = steps[currentStep];
-            
+
             document.getElementById('info-icon').textContent = step.phaseIcon;
             document.getElementById('info-title').textContent = step.title;
             document.getElementById('info-phase').textContent = `步骤 ${currentStep + 1} of ${steps.length} | ${step.phaseTitle}`;
             document.getElementById('info-content').innerHTML = step.narration;
-            
+
             document.getElementById('step-display').textContent = `${currentStep + 1} / ${steps.length}`;
             const progress = ((currentStep + 1) / steps.length) * 100;
             document.getElementById('progress-fill').style.width = `${progress}%`;
-            
+
             links.forEach((link, i) => { link.state = step.linkStates[i] || 'Down'; });
-            
+
             const linkList = document.getElementById('link-state-list');
             linkList.innerHTML = links.map(link => `
                 <div class="link-state-item">
@@ -833,7 +843,7 @@
                     <div class="link-state-badge state-${link.state.toLowerCase().replace('-', '')}">${link.state}</div>
                 </div>
             `).join('');
-            
+
             if (step.packets.length > 0) {
                 packets = [];
                 packetLog = [];
@@ -842,7 +852,7 @@
                     packetLog.push({ type: p.type, from: routers[p.from].name, to: routers[p.to].name });
                 });
             }
-            
+
             const logList = document.getElementById('packet-log-list');
             if (packetLog.length === 0) {
                 logList.innerHTML = '<div class="packet-log-item"><div class="packet-log-dot" style="background:#64748b"></div><div>暂无报文</div></div>';
@@ -854,9 +864,9 @@
                     </div>
                 `).join('');
             }
-            
+
             generateStepNav();
-            
+
             const nextBtn = document.getElementById('next-btn');
             if (currentStep >= steps.length - 1) {
                 nextBtn.disabled = true;
@@ -895,4 +905,3 @@
     </script>
 </body>
 </html>
-

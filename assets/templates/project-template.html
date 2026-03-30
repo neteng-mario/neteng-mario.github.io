@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目名称 - NetDoc Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../assets/styles/base.css">
+    <script src="../assets/theme.js"></script>
+    <script src="../assets/drawer.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(31, 41, 55, 0.85);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .brand h1 {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .step-display {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-reset {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-reset:hover {
+            background: var(--accent-blue);
+        }
+
+        .btn-play {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-play:hover {
+            background: #2563eb;
+        }
+
+        .main-content {
+            padding: 24px;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #scene-canvas {
+            display: block;
+            width: 100%;
+            height: 500px;
+        }
+
+        .timeline-bar {
+            padding: 16px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .timeline-list {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .timeline-item {
+            flex-shrink: 0;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .timeline-item:hover {
+            background: var(--accent-blue);
+        }
+
+        .timeline-item.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-green);
+        }
+
+        .timeline-item.completed {
+            background: var(--accent-green);
+            opacity: 0.7;
+        }
+
+        .danmaku-container {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            pointer-events: none;
+        }
+
+        .danmaku-track {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .danmaku-item {
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            font-size: 14px;
+            white-space: nowrap;
+            animation: danmaku 0.3s ease;
+        }
+
+        @keyframes danmaku {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .info-panel {
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-panel h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--accent-blue);
+        }
+
+        .info-panel p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .route-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .route-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .route-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .route-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            #scene-canvas {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="brand">
+            <div class="brand-logo">🔄</div>
+            <h1>项目名称</h1>
+        </div>
+        <div class="controls">
+            <div class="step-display">步骤 <span id="step-num">01</span> / <span id="step-total">10</span></div>
+            <button class="btn btn-reset" onclick="resetAnimation()">重置</button>
+            <button class="btn btn-play" id="play-btn" onclick="togglePlay()">
+                <span id="play-icon">▶</span> <span id="play-text">播放</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="canvas-container">
+            <canvas id="scene-canvas"></canvas>
+            <div class="danmaku-container">
+                <div class="danmaku-track" id="danmaku-track"></div>
+            </div>
+        </div>
+
+        <div class="timeline-bar">
+            <div class="timeline-list" id="timeline-list"></div>
+        </div>
+
+        <div class="info-panel">
+            <h3 id="info-title">步骤标题</h3>
+            <p id="info-desc">步骤描述内容...</p>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('scene-canvas');
+        const ctx = canvas.getContext('2d');
+        const drawer = new NetworkDrawer(canvas);
+
+        const devices = [
+            { id: 0, name: 'R1', ip: '10.0.0.1', x: 0, y: 0, color: '#3b82f6', role: 'Router' },
+            { id: 1, name: 'R2', ip: '10.0.0.2', x: 0, y: 0, color: '#10b981', role: 'Router' },
+        ];
+
+        const connections = [
+            { from: 0, to: 1, type: 'direct' }
+        ];
+
+        const steps = [
+            {
+                title: '步骤 1',
+                description: '描述内容...',
+                danmaku: '弹幕内容...',
+                action: () => {}
+            }
+        ];
+
+        let currentStep = 0;
+        let isPlaying = false;
+        let animationId = null;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = 500;
+            layoutDevices();
+        }
+
+        function layoutDevices() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const spacing = 150;
+
+            devices.forEach((device, i) => {
+                device.x = centerX + (i - (devices.length - 1) / 2) * spacing;
+                device.y = centerY;
+            });
+        }
+
+        function render() {
+            drawer.clear();
+            drawer.setTime(Date.now() / 1000);
+
+            connections.forEach(conn => {
+                const from = devices[conn.from];
+                const to = devices[conn.to];
+                drawer.drawConnection(from, to, conn.type);
+            });
+
+            devices.forEach(device => {
+                if (device.type === 'pc') {
+                    drawer.drawPC(device);
+                } else {
+                    drawer.drawRouter(device);
+                }
+            });
+
+            animationId = requestAnimationFrame(render);
+        }
+
+        function updateUI() {
+            const step = steps[currentStep];
+            document.getElementById('step-num').textContent = String(currentStep + 1).padStart(2, '0');
+            document.getElementById('info-title').textContent = step.title;
+            document.getElementById('info-desc').textContent = step.description;
+
+            const danmakuTrack = document.getElementById('danmaku-track');
+            danmakuTrack.innerHTML = `<div class="danmaku-item">${step.danmaku}</div>`;
+
+            const timelineList = document.getElementById('timeline-list');
+            timelineList.innerHTML = steps.map((s, i) => `
+                <div class="timeline-item ${i < currentStep ? 'completed' : ''} ${i === currentStep ? 'active' : ''}">
+                    ${i + 1}. ${s.title}
+                </div>
+            `).join('');
+
+            if (step.action) step.action();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-icon').textContent = isPlaying ? '⏸' : '▶';
+            document.getElementById('play-text').textContent = isPlaying ? '暂停' : '播放';
+
+            if (isPlaying) playNextStep();
+        }
+
+        function playNextStep() {
+            if (!isPlaying || currentStep >= steps.length - 1) {
+                if (currentStep >= steps.length - 1) {
+                    isPlaying = false;
+                    document.getElementById('play-icon').textContent = '▶';
+                    document.getElementById('play-text').textContent = '播放';
+                }
+                return;
+            }
+
+            currentStep++;
+            updateUI();
+
+            setTimeout(playNextStep, 2000);
+        }
+
+        function resetAnimation() {
+            currentStep = 0;
+            isPlaying = false;
+            document.getElementById('play-icon').textContent = '▶';
+            document.getElementById('play-text').textContent = '播放';
+            updateUI();
+        }
+
+        document.querySelectorAll('.timeline-item').forEach((item, i) => {
+            item.addEventListener('click', () => {
+                currentStep = i;
+                isPlaying = false;
+                document.getElementById('play-icon').textContent = '▶';
+                document.getElementById('play-text').textContent = '播放';
+                updateUI();
+            });
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        render();
+        updateUI();
+    </script>
+</body>
+</html>

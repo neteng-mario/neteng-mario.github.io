@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSPF 邻居状态机 · 协议解析</title>
+    <link rel="stylesheet" href="../assets/styles/base.css">
+    <script src="../assets/theme.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --blue: #3b82f6;
+            --blue-dark: #1d4ed8;
+            --purple: #8b5cf6;
+            --purple-dark: #6d28d9;
+            --green: #10b981;
+            --green-dark: #059669;
+            --orange: #f59e0b;
+            --pink: #ec4899;
+            --cyan: #06b6d4;
+            --slate: #64748b;
+            --bg-dark: #030712;
+            --bg-card: rgba(17, 24, 39, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .scene-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-orb-1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--blue), transparent 70%);
+            top: -200px; left: -100px;
+        }
+
+        .glow-orb-2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, var(--purple), transparent 70%);
+            bottom: -100px; right: -50px;
+        }
+
+        .header {
+            position: relative;
+            z-index: 10;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: linear-gradient(90deg, rgba(3, 7, 18, 1) 0%, rgba(3, 7, 18, 0) 100%);
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 18px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--blue);
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 10;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 16px 32px 32px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(20px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .panel-title .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .panel-title .icon.blue { background: rgba(59, 130, 246, 0.2); }
+        .panel-title .icon.purple { background: rgba(139, 92, 246, 0.2); }
+        .panel-title .icon.green { background: rgba(16, 185, 129, 0.2); }
+        .panel-title .icon.orange { background: rgba(245, 158, 11, 0.2); }
+
+        .state-indicator {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .state-indicator.down { background: rgba(100, 116, 139, 0.2); color: var(--slate); }
+        .state-indicator.init { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+        .state-indicator.twoway { background: rgba(139, 92, 246, 0.2); color: var(--purple); }
+        .state-indicator.exstart { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .state-indicator.exchange { background: rgba(192, 132, 252, 0.2); color: #c084fc; }
+        .state-indicator.loading { background: rgba(245, 158, 11, 0.2); color: var(--orange); }
+        .state-indicator.full { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+
+        .state-diagram {
+            position: relative;
+            padding: 20px 0;
+            min-height: 200px;
+        }
+
+        .state-diagram svg {
+            width: 100%;
+            height: 200px;
+        }
+
+        .state-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .state-node:hover .state-circle {
+            filter: brightness(1.2);
+        }
+
+        .state-node.active .state-circle {
+            stroke-width: 4;
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+
+        .state-node .state-circle {
+            transition: all 0.3s ease;
+        }
+
+        .state-node .state-name {
+            font-size: 12px;
+            font-weight: 600;
+            fill: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .state-node.active .state-name {
+            fill: var(--text-primary);
+        }
+
+        .state-arrow {
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+            opacity: 0.4;
+        }
+
+        .state-arrow.active {
+            opacity: 1;
+            stroke-width: 2;
+        }
+
+        .state-arrow.rollback {
+            stroke: #ef4444;
+            stroke-dasharray: 5, 3;
+            opacity: 0.5;
+        }
+
+        .state-arrow.rollback.active {
+            opacity: 1;
+            stroke-width: 2;
+        }
+
+        .rollback-label {
+            fill: #ef4444;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .router-interaction {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            padding: 24px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+        }
+
+        .router-box {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+        }
+
+        .router-box.r1 {
+            background: linear-gradient(145deg, var(--blue), var(--blue-dark));
+            box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.5);
+        }
+
+        .router-box.r2 {
+            background: linear-gradient(145deg, var(--purple), var(--purple-dark));
+            box-shadow: 0 10px 40px -10px rgba(139, 92, 246, 0.5);
+        }
+
+        .router-box .name {
+            font-size: 28px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .router-box .ip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 4px;
+        }
+
+        .router-box .router-id {
+            font-size: 10px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+        }
+
+        .router-box .dr-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-top: 4px;
+            animation: drPulse 2s infinite;
+        }
+
+        .dr-badge-right {
+            position: absolute;
+            right: -50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            animation: drPulse 2s infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes drPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+            50% { box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.3); }
+        }
+
+        .router-box .state {
+            margin-top: 8px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .interaction-line {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .interaction-line .label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .packet-flow-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 200px;
+        }
+
+        .packet-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .packet-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .packet-item.hello { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+        .packet-item.dd { background: rgba(139, 92, 246, 0.2); color: var(--purple); }
+        .packet-item.lsr { background: rgba(245, 158, 11, 0.2); color: var(--orange); }
+        .packet-item.lsu { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+        .packet-item.lsack { background: rgba(236, 72, 153, 0.2); color: var(--pink); }
+
+        .packet-item .arrow {
+            font-size: 16px;
+            opacity: 0.6;
+        }
+
+        .lsdb-panel {
+            margin-top: 20px;
+        }
+
+        .lsdb-router {
+            margin-bottom: 16px;
+        }
+
+        .lsdb-router-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .lsdb-router-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .lsdb-router-name.r1 { color: var(--blue); }
+        .lsdb-router-name.r2 { color: var(--purple); }
+
+        .lsdb-progress {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lsdb-bar {
+            width: 120px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .lsdb-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .lsdb-fill.r1 { background: linear-gradient(90deg, var(--blue), var(--blue-dark)); }
+        .lsdb-fill.r2 { background: linear-gradient(90deg, var(--purple), var(--purple-dark)); }
+
+        .lsdb-percent {
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 40px;
+        }
+
+        .lsdb-percent.r1 { color: var(--blue); }
+        .lsdb-percent.r2 { color: var(--purple); }
+
+        .lsdb-entries {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+
+        .lsdb-entries-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+        }
+
+        .lsdb-entries-header span {
+            min-width: 70px;
+        }
+
+        .lsdb-entries-header span:nth-child(2) {
+            flex: 1;
+        }
+
+        .lsdb-entry {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+            flex-wrap: wrap;
+        }
+
+        .lsdb-entry.r1 { border-left: 3px solid var(--blue); }
+        .lsdb-entry.r2 { border-left: 3px solid var(--purple); }
+
+        .lsdb-entry.new {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .lsdb-param {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .lsdb-label {
+            color: var(--text-tertiary);
+            font-size: 10px;
+            min-width: 32px;
+        }
+
+        .lsdb-entry .type {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .lsdb-entry .id {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .lsdb-entry .age {
+            color: var(--orange);
+            font-weight: 500;
+        }
+
+        .lsdb-entry .adv {
+            color: var(--cyan);
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .state-detail-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .detail-section {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .detail-section h3 {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-section h3::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: linear-gradient(180deg, var(--blue), var(--purple));
+            border-radius: 2px;
+        }
+
+        .detail-section p {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .condition-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: var(--blue);
+            line-height: 1.6;
+        }
+
+        .transitions-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .trans-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+        }
+
+        .trans-item.rollback {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .trans-item .from { color: var(--text-secondary); }
+        .trans-item .arrow { color: var(--text-tertiary); }
+        .trans-item .to { color: var(--green); }
+        .trans-item.rollback .to { color: var(--pink); }
+        .trans-item.rollback .arrow { color: var(--pink); }
+
+        .rollback-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .rollback-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .rollback-icon {
+            font-size: 16px;
+        }
+
+        .rollback-text {
+            color: var(--text-secondary);
+        }
+
+        .rollback-text strong {
+            color: #ef4444;
+        }
+
+        .packet-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .packet-tag {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid;
+        }
+
+        .packet-tag.hello { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
+        .packet-tag.dd { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.4); }
+        .packet-tag.lsr { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+        .packet-tag.lsu { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
+        .packet-tag.lsack { background: rgba(236, 72, 153, 0.15); color: #f472b6; border-color: rgba(236, 72, 153, 0.4); }
+
+        .note-tip {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .note-tip h4 {
+            font-size: 13px;
+            color: var(--orange);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .note-tip p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .msc-container {
+            margin-top: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+        }
+
+        .msc-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .msc-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 400px;
+        }
+
+        .msc-row {
+            display: flex;
+            align-items: center;
+            height: 28px;
+        }
+
+        .msc-label {
+            width: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .msc-label.r1 { color: var(--blue); text-align: right; padding-right: 12px; }
+        .msc-label.r2 { color: var(--purple); padding-left: 12px; }
+
+        .msc-line {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            border-left: 1px dashed rgba(255, 255, 255, 0.1);
+            border-right: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .msc-msg {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            min-width: 42px;
+            text-align: center;
+        }
+
+        .msc-msg.hello { background: rgba(59, 130, 246, 0.3); color: var(--blue); }
+        .msc-msg.dd { background: rgba(139, 92, 246, 0.3); color: var(--purple); }
+        .msc-msg.lsr { background: rgba(245, 158, 11, 0.3); color: var(--orange); }
+        .msc-msg.lsu { background: rgba(16, 185, 129, 0.3); color: var(--green); }
+        .msc-msg.lsack { background: rgba(236, 72, 153, 0.3); color: var(--pink); }
+
+        .msc-msg.to-r2 { left: 10%; }
+        .msc-msg.to-r1 { left: 90%; }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scene-bg">
+        <div class="glow-orb glow-orb-1"></div>
+        <div class="glow-orb glow-orb-2"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-badge">
+            <span>📡</span>
+            <span>OSPF State Machine</span>
+        </div>
+        <h1>OSPF 邻居状态机解析</h1>
+        <p class="header-subtitle">点击状态节点查看详情 · 理解 OSPF 邻居关系建立过程</p>
+    </header>
+
+    <main class="main-container">
+        <div class="left-panel">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <div class="icon blue">🔄</div>
+                        状态转换图
+                    </div>
+                </div>
+                <div class="state-diagram">
+                    <svg viewBox="0 0 800 200" id="state-svg">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                            </marker>
+                            <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <div class="icon purple">📨</div>
+                        双机交互模拟
+                    </div>
+                </div>
+                <div class="router-interaction">
+                    <div class="router-box r1" id="router1">
+                        <div class="name">R1</div>
+                        <div class="router-id">RID: 1.1.1.1</div>
+                        <div class="ip">接口: 192.168.1.1</div>
+                        <div class="state" id="r1-state">Down</div>
+                    </div>
+                    <div class="interaction-line">
+                        <div class="packet-flow-display" id="packet-display"></div>
+                        <div class="dr-badge-right" id="dr-badge" style="display:none">DR</div>
+                    </div>
+                    <div class="router-box r2" id="router2">
+                        <div class="name">R2</div>
+                        <div class="router-id">RID: 2.2.2.2</div>
+                        <div class="ip">接口: 192.168.1.2</div>
+                        <div class="state" id="r2-state">Down</div>
+                    </div>
+                </div>
+
+                <div class="msc-container" id="msc-container">
+                    <div class="msc-title">📊 报文时序图</div>
+                    <div class="msc-chart" id="msc-chart">
+                        <div class="msc-row">
+                            <div class="msc-label r1">R1</div>
+                            <div class="msc-line"></div>
+                            <div class="msc-label r2">R2</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lsdb-panel">
+                    <div class="lsdb-router">
+                        <div class="lsdb-router-header">
+                            <div class="lsdb-router-name r1">📦 R1 LSDB</div>
+                            <div class="lsdb-progress">
+                                <div class="lsdb-bar"><div class="lsdb-fill r1" id="lsdb-fill-r1" style="width: 0%"></div></div>
+                                <span class="lsdb-percent r1" id="lsdb-pct-r1">0%</span>
+                            </div>
+                        </div>
+                        <div class="lsdb-entries-header">
+                            <span>类型</span><span>链路ID</span><span>Age</span><span>发布者</span>
+                        </div>
+                        <div class="lsdb-entries" id="lsdb-r1-entries"></div>
+                    </div>
+                    <div class="lsdb-router">
+                        <div class="lsdb-router-header">
+                            <div class="lsdb-router-name r2">📦 R2 LSDB</div>
+                            <div class="lsdb-progress">
+                                <div class="lsdb-bar"><div class="lsdb-fill r2" id="lsdb-fill-r2" style="width: 0%"></div></div>
+                                <span class="lsdb-percent r2" id="lsdb-pct-r2">0%</span>
+                            </div>
+                        </div>
+                        <div class="lsdb-entries-header">
+                            <span>类型</span><span>链路ID</span><span>Age</span><span>发布者</span>
+                        </div>
+                        <div class="lsdb-entries" id="lsdb-r2-entries"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel state-detail-panel" id="detail-panel">
+                <div style="text-align: center; padding: 60px 20px; color: var(--text-tertiary);">
+                    <div style="font-size: 48px; margin-bottom: 16px;">👈</div>
+                    <div style="font-size: 15px;">点击左侧状态图中的节点<br>查看状态详细信息</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const stateData = {
+            down: {
+                name: 'Down',
+                label: '初始状态',
+                icon: '⭕',
+                color: '#64748b',
+                desc: '邻居关系的初始状态。双方路由器尚未交换任何信息，链路状态为 Down。',
+                entry: '邻居关系刚建立或路由器重启后',
+                packets: [],
+                packetFlow: [],
+                msc: [],
+                lsdb: { r1: 0, r2: 0 },
+                lsdbEntries: { r1: [], r2: [] },
+                transitions: ['Down → Init'],
+                note: '在 NBMA 网络（如帧中继）中，可能会发送 Hello 报文尝试联系邻居。广播网络（如以太网）直接从 Down 状态开始。'
+            },
+            init: {
+                name: 'Init',
+                label: '初始收到',
+                icon: '📨',
+                color: '#3b82f6',
+                desc: 'R1 和 R2 已收到对方发来的 Hello 报文，但在 Neighbor List 中尚未看到自己的 Router ID。',
+                entry: '收到邻居发来的 Hello 报文，但该报文中未包含自己的 Router ID',
+                packets: ['hello'],
+                packetFlow: [
+                    { pkt: 'Hello', dir: 'r1-r2' },
+                    { pkt: 'Hello', dir: 'r2-r1' }
+                ],
+                msc: [
+                    { from: 'r1', to: 'r2', pkt: 'Hello', pos: 30 },
+                    { from: 'r2', to: 'r1', pkt: 'Hello', pos: 60 }
+                ],
+                lsdb: { r1: 5, r2: 5 },
+                lsdbEntries: {
+                    r1: [{ type: 'Router-LSA', id: '192.168.1.2', age: 0, adv: 'R2' }],
+                    r2: [{ type: 'Router-LSA', id: '192.168.1.1', age: 0, adv: 'R1' }]
+                },
+                transitions: ['Init → 2-Way', 'Init → Down'],
+                note: 'Init 状态是单向的，只有收到 Hello 的一方会进入此状态。'
+            },
+            twoway: {
+                name: '2-Way',
+                label: '双向通信',
+                icon: '🤝',
+                color: '#8b5cf6',
+                desc: '双向通信已建立。双方都在对方发来的 Hello 报文的 Neighbor List 中看到了自己的 Router ID。',
+                entry: '收到的 Hello 报文中 Neighbor List 包含自己的 Router ID',
+                packets: ['hello'],
+                packetFlow: [
+                    { pkt: 'Hello', dir: 'r1-r2' },
+                    { pkt: 'Hello', dir: 'r2-r1' }
+                ],
+                msc: [
+                    { from: 'r1', to: 'r2', pkt: 'Hello', pos: 25 },
+                    { from: 'r2', to: 'r1', pkt: 'Hello', pos: 50 }
+                ],
+                lsdb: { r1: 10, r2: 10 },
+                lsdbEntries: {
+                    r1: [
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 1800, adv: 'R2' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ],
+                    r2: [
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 1800, adv: 'R1' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ]
+                },
+                transitions: ['2-Way → ExStart', '2-Way → Full'],
+                note: 'DR/BDR 选举在 2-Way 状态之后进行。DROther 之间保持 2-Way 状态，不会进入 ExStart。'
+            },
+            exstart: {
+                name: 'ExStart',
+                label: '协商主从',
+                icon: '📋',
+                color: '#a855f7',
+                desc: '开始协商主从关系。双方交换空的 DD 报文，Router ID 大者为主（Master），小者为从（Slave）。',
+                entry: '2-Way 状态后，需要与 DR/BDR 建立完全邻接关系',
+                packets: ['dd'],
+                packetFlow: [
+                    { pkt: 'DD', dir: 'r2-r1' },
+                    { pkt: 'DD', dir: 'r1-r2' }
+                ],
+                msc: [
+                    { from: 'r2', to: 'r1', pkt: 'DD', pos: 30 },
+                    { from: 'r1', to: 'r2', pkt: 'DD', pos: 60 }
+                ],
+                lsdb: { r1: 25, r2: 25 },
+                lsdbEntries: {
+                    r1: [
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 1800, adv: 'R2' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ],
+                    r2: [
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 1800, adv: 'R1' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ]
+                },
+                transitions: ['ExStart → Exchange', 'ExStart → 2-Way'],
+                note: '此状态仅发生在 DR/BDR 与其他路由器之间，或 Point-to-Point 链路上。'
+            },
+            exchange: {
+                name: 'Exchange',
+                label: '交换 DD',
+                icon: '🔄',
+                color: '#c084fc',
+                desc: '双方交换 DD (Database Description) 报文，描述各自 LSDB 的摘要信息。',
+                entry: '主从关系协商完成，开始交换 DD 报文描述数据库摘要',
+                packets: ['dd'],
+                packetFlow: [
+                    { pkt: 'DD', dir: 'r2-r1' },
+                    { pkt: 'DD', dir: 'r1-r2' },
+                    { pkt: 'DD', dir: 'r2-r1' },
+                    { pkt: 'DD', dir: 'r1-r2' }
+                ],
+                msc: [
+                    { from: 'r2', to: 'r1', pkt: 'DD', pos: 20 },
+                    { from: 'r1', to: 'r2', pkt: 'DD', pos: 40 },
+                    { from: 'r2', to: 'r1', pkt: 'DD', pos: 60 },
+                    { from: 'r1', to: 'r2', pkt: 'DD', pos: 80 }
+                ],
+                lsdb: { r1: 50, r2: 50 },
+                lsdbEntries: {
+                    r1: [
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 1800, adv: 'R2' },
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 0, adv: 'R1', new: true },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ],
+                    r2: [
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 1800, adv: 'R1' },
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 0, adv: 'R2', new: true },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ]
+                },
+                transitions: ['Exchange → Loading', 'Exchange → ExStart'],
+                note: '双方通过 DD 报文交换 LSDB 摘要，发现自己缺少的 LSA 后进入 Loading 状态。'
+            },
+            loading: {
+                name: 'Loading',
+                label: '加载 LSA',
+                icon: '📥',
+                color: '#f59e0b',
+                desc: '双方互相请求对方缺少的 LSA（Link State Advertisement），并发送 LSU (Link State Update) 报文进行更新。',
+                entry: 'DD 报文交换完成后，发现本地 LSDB 与邻居存在差异',
+                packets: ['lsr', 'lsu', 'lsack'],
+                packetFlow: [
+                    { pkt: 'LSR', dir: 'r1-r2' },
+                    { pkt: 'LSU', dir: 'r2-r1' },
+                    { pkt: 'LSAck', dir: 'r1-r2' },
+                    { pkt: 'LSR', dir: 'r2-r1' },
+                    { pkt: 'LSU', dir: 'r1-r2' },
+                    { pkt: 'LSAck', dir: 'r2-r1' }
+                ],
+                msc: [
+                    { from: 'r1', to: 'r2', pkt: 'LSR', pos: 15 },
+                    { from: 'r2', to: 'r1', pkt: 'LSU', pos: 35 },
+                    { from: 'r1', to: 'r2', pkt: 'LSAck', pos: 55 },
+                    { from: 'r2', to: 'r1', pkt: 'LSR', pos: 70 },
+                    { from: 'r1', to: 'r2', pkt: 'LSU', pos: 85 }
+                ],
+                lsdb: { r1: 80, r2: 80 },
+                lsdbEntries: {
+                    r1: [
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 1800, adv: 'R2' },
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 1800, adv: 'R1' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ],
+                    r2: [
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 1800, adv: 'R1' },
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 1800, adv: 'R2' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 1800, adv: 'R2(DR)' }
+                    ]
+                },
+                transitions: ['Loading → Full', 'Loading → Exchange'],
+                note: 'Loading 状态期间，双方会多次交换 LSR、LSU 和 LSAck 报文，直到 LSDB 完全同步。'
+            },
+            full: {
+                name: 'Full',
+                label: '完全邻接',
+                icon: '✅',
+                color: '#10b981',
+                desc: '双方 LSDB 已完全同步，邻居关系建立成功，可以进行路由计算。',
+                entry: 'LSDB 同步完成，双方拥有相同的链路状态信息',
+                packets: ['hello', 'lsu', 'lsack'],
+                packetFlow: [
+                    { pkt: 'Hello', dir: 'r1-r2' },
+                    { pkt: 'Hello', dir: 'r2-r1' },
+                    { pkt: 'LSU', dir: 'r1-r2' },
+                    { pkt: 'LSAck', dir: 'r2-r1' }
+                ],
+                msc: [
+                    { from: 'r1', to: 'r2', pkt: 'Hello', pos: 20 },
+                    { from: 'r2', to: 'r1', pkt: 'Hello', pos: 40 },
+                    { from: 'r1', to: 'r2', pkt: 'LSU', pos: 60 },
+                    { from: 'r2', to: 'r1', pkt: 'LSAck', pos: 80 }
+                ],
+                lsdb: { r1: 100, r2: 100 },
+                lsdbEntries: {
+                    r1: [
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 0, adv: 'R1' },
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 0, adv: 'R2' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 0, adv: 'R2(DR)' }
+                    ],
+                    r2: [
+                        { type: 'Router-LSA', id: '192.168.1.2', age: 0, adv: 'R2' },
+                        { type: 'Router-LSA', id: '192.168.1.1', age: 0, adv: 'R1' },
+                        { type: 'Network-LSA', id: '192.168.1.0', age: 0, adv: 'R2(DR)' }
+                    ]
+                },
+                transitions: ['Full → Down'],
+                note: 'Full 状态是 OSPF 邻居关系的最终状态，此时双方已经完全同步，可以开始路由计算。每 10 秒交互一次 Hello 报文维持邻居关系。'
+            }
+        };
+
+        const stateOrder = ['down', 'init', 'twoway', 'exstart', 'exchange', 'loading', 'full'];
+        const statePositions = {
+            down: { x: 60, y: 100 },
+            init: { x: 160, y: 100 },
+            twoway: { x: 280, y: 100 },
+            exstart: { x: 400, y: 60 },
+            exchange: { x: 520, y: 60 },
+            loading: { x: 640, y: 60 },
+            full: { x: 740, y: 100 }
+        };
+
+        let currentState = 'down';
+
+        const rollbackArrows = [
+            { from: 'init', to: 'down', label: 'Hello超时' },
+            { from: 'twoway', to: 'init', label: '选举失败' },
+            { from: 'exstart', to: 'twoway', label: 'MTU不匹配' },
+            { from: 'exchange', to: 'exstart', label: 'DD序列号错误' },
+            { from: 'loading', to: 'exchange', label: 'LSR超时' },
+            { from: 'full', to: 'down', label: '邻居失效' }
+        ];
+
+        function drawStateDiagram() {
+            const svg = document.getElementById('state-svg');
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                    </marker>
+                    <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+                    </marker>
+                    <marker id="arrowhead-rollback" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+                    </marker>
+                </defs>
+            `;
+
+            const arrows = [
+                { from: 'down', to: 'init', label: '' },
+                { from: 'init', to: 'twoway', label: '' },
+                { from: 'twoway', to: 'exstart', label: '' },
+                { from: 'exstart', to: 'exchange', label: '' },
+                { from: 'exchange', to: 'loading', label: '' },
+                { from: 'loading', to: 'full', label: '' }
+            ];
+
+            arrows.forEach(arrow => {
+                const fromPos = statePositions[arrow.from];
+                const toPos = statePositions[arrow.to];
+                const isActive = stateOrder.indexOf(arrow.from) < stateOrder.indexOf(currentState);
+
+                let path;
+                if (arrow.from === 'twoway' && arrow.to === 'exstart') {
+                    path = `M ${fromPos.x + 40} ${fromPos.y - 20} Q ${(fromPos.x + toPos.x) / 2} ${fromPos.y - 50} ${toPos.x - 40} ${toPos.y + 20}`;
+                } else if (arrow.from === 'exchange' && arrow.to === 'loading') {
+                    path = `M ${fromPos.x + 40} ${fromPos.y + 20} Q ${(fromPos.x + toPos.x) / 2} ${fromPos.y + 50} ${toPos.x - 40} ${toPos.y + 20}`;
+                } else {
+                    path = `M ${fromPos.x + 40} ${fromPos.y} L ${toPos.x - 40} ${toPos.y}`;
+                }
+
+                svg.innerHTML += `
+                    <path d="${path}" class="state-arrow ${isActive ? 'active' : ''}"
+                          ${isActive ? "marker-end='url(#arrowhead-active)'" : "marker-end='url(#arrowhead)'"} />
+                `;
+            });
+
+            rollbackArrows.forEach(arrow => {
+                const fromPos = statePositions[arrow.from];
+                const toPos = statePositions[arrow.to];
+                const isActive = currentState === arrow.from;
+
+                let path;
+                const midX = (fromPos.x + toPos.x) / 2;
+                const midY = Math.min(fromPos.y, toPos.y) - 80;
+                path = `M ${fromPos.x + 32} ${fromPos.y - 25} Q ${midX} ${midY} ${toPos.x - 32} ${toPos.y - 25}`;
+
+                svg.innerHTML += `
+                    <path d="${path}" class="state-arrow rollback ${isActive ? 'active' : ''}"
+                          marker-end='url(#arrowhead-rollback)'/>
+                    <text x="${midX}" y="${midY + 5}" class="rollback-label" text-anchor="middle">${arrow.label}</text>
+                `;
+            });
+
+            stateOrder.forEach(stateId => {
+                const pos = statePositions[stateId];
+                const state = stateData[stateId];
+                const isActive = stateId === currentState;
+                const isPast = stateOrder.indexOf(stateId) < stateOrder.indexOf(currentState);
+
+                svg.innerHTML += `
+                    <g class="state-node ${isActive ? 'active' : ''}" data-state="${stateId}"
+                       transform="translate(${pos.x}, ${pos.y})"
+                       style="cursor: pointer;">
+                        <circle class="state-circle" r="32"
+                                fill="${isActive || isPast ? state.color : '#1e293b'}"
+                                stroke="${state.color}"
+                                stroke-width="${isActive ? 3 : 2}"/>
+                        <text class="state-name" text-anchor="middle" dy="5"
+                              font-size="${isActive ? '14' : '12'}"
+                              font-weight="${isActive ? '700' : '600'}">
+                            ${state.name}
+                        </text>
+                    </g>
+                `;
+            });
+
+            svg.querySelectorAll('.state-node').forEach(node => {
+                node.addEventListener('click', () => {
+                    selectState(node.dataset.state);
+                });
+            });
+        }
+
+        function updateRouterDisplay(state) {
+            const stateInfo = stateData[state];
+            const r1StateEl = document.getElementById('r1-state');
+            const r2StateEl = document.getElementById('r2-state');
+            const drBadge = document.getElementById('dr-badge');
+
+            r1StateEl.textContent = state;
+            r2StateEl.textContent = state;
+            r1StateEl.className = `state ${state}`;
+            r2StateEl.className = `state ${state}`;
+
+            const stateOrder = ['down', 'init', 'twoway', 'exstart', 'exchange', 'loading', 'full'];
+            const currentIdx = stateOrder.indexOf(state);
+            const drIdx = stateOrder.indexOf('twoway');
+
+            if (currentIdx >= drIdx) {
+                drBadge.style.display = 'inline';
+            } else {
+                drBadge.style.display = 'none';
+            }
+        }
+
+        function updatePacketFlow(state) {
+            const container = document.getElementById('packet-display');
+            const flow = stateData[state].packetFlow || [];
+
+            container.innerHTML = '';
+
+            flow.forEach((item, i) => {
+                const arrow = item.dir === 'r1-r2' ? '→' : '←';
+                const label = item.dir === 'r1-r2' ? 'R1' : 'R2';
+                container.innerHTML += `
+                    <div class="packet-item ${item.pkt.toLowerCase()}" style="transition-delay: ${i * 150}ms">
+                        <span>${label}</span>
+                        <span class="arrow">${arrow}</span>
+                        <span>${item.pkt}</span>
+                    </div>
+                `;
+                setTimeout(() => {
+                    container.children[i]?.classList.add('visible');
+                }, 50);
+            });
+        }
+
+        function updateMSC(state) {
+            const chart = document.getElementById('msc-chart');
+            const msc = stateData[state].msc || [];
+
+            chart.innerHTML = `
+                <div class="msc-row">
+                    <div class="msc-label r1">R1</div>
+                    <div class="msc-line"></div>
+                    <div class="msc-label r2">R2</div>
+                </div>
+            `;
+
+            msc.forEach((msg, i) => {
+                const row = document.createElement('div');
+                row.className = 'msc-row';
+                row.style.opacity = '0';
+                row.style.transform = 'translateY(10px)';
+
+                const isToR2 = msg.from === 'r1';
+                row.innerHTML = `
+                    <div class="msc-label ${msg.from}">${msg.from.toUpperCase()}</div>
+                    <div class="msc-line">
+                        <div class="msc-msg ${msg.pkt.toLowerCase()} ${isToR2 ? 'to-r2' : 'to-r1'}"
+                             style="left: ${isToR2 ? msg.pos : 100-msg.pos}%; transition-delay: ${i * 200}ms">
+                            ${msg.pkt}
+                        </div>
+                    </div>
+                    <div class="msc-label ${msg.to || 'r2'}">${(msg.to || 'r2').toUpperCase()}</div>
+                `;
+
+                chart.appendChild(row);
+                setTimeout(() => {
+                    row.style.opacity = '1';
+                    row.style.transform = 'translateY(0)';
+                    row.style.transition = 'all 0.3s ease';
+                }, 100 + i * 200);
+            });
+        }
+
+        function updateLSDB(state) {
+            const lsdb = stateData[state].lsdb;
+            const entries = stateData[state].lsdbEntries;
+
+            document.getElementById('lsdb-fill-r1').style.width = lsdb.r1 + '%';
+            document.getElementById('lsdb-pct-r1').textContent = lsdb.r1 + '%';
+            document.getElementById('lsdb-fill-r2').style.width = lsdb.r2 + '%';
+            document.getElementById('lsdb-pct-r2').textContent = lsdb.r2 + '%';
+
+            ['r1', 'r2'].forEach(router => {
+                const container = document.getElementById(`lsdb-${router}-entries`);
+                container.innerHTML = '';
+
+                entries[router].forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = `lsdb-entry ${router}${entry.new ? ' new' : ''}`;
+                    div.innerHTML = `
+                        <div class="lsdb-param">
+                            <span class="lsdb-label">类型</span>
+                            <span class="type">${entry.type}</span>
+                        </div>
+                        <div class="lsdb-param">
+                            <span class="lsdb-label">链路ID</span>
+                            <span class="id">${entry.id}</span>
+                        </div>
+                        <div class="lsdb-param">
+                            <span class="lsdb-label">Age</span>
+                            <span class="age">${entry.age}s</span>
+                        </div>
+                        ${entry.adv ? `
+                        <div class="lsdb-param">
+                            <span class="lsdb-label">发布</span>
+                            <span class="adv">${entry.adv}</span>
+                        </div>
+                        ` : ''}
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function renderDetail(state) {
+            const panel = document.getElementById('detail-panel');
+            const s = stateData[state];
+
+            let packetTags = s.packets.length
+                ? s.packets.map(p => `<span class="packet-tag ${p.toLowerCase()}">${p}</span>`).join('')
+                : '<span style="color: var(--text-tertiary)">无</span>';
+
+            let transHtml = s.transitions.map(t => {
+                const [from, to] = t.split(' → ');
+                const fromIdx = stateOrder.indexOf(from);
+                const toIdx = stateOrder.indexOf(to);
+                const isRollback = toIdx < fromIdx;
+                return `
+                    <div class="trans-item ${isRollback ? 'rollback' : ''}">
+                        <span class="from">${from}</span>
+                        <span class="arrow">${isRollback ? '↩' : '→'}</span>
+                        <span class="to">${to}</span>
+                    </div>
+                `;
+            }).join('');
+
+            const rollbackTransitions = rollbackArrows.filter(a => a.from === state);
+            const rollbackHtml = rollbackTransitions.length > 0 ? `
+                <div class="detail-section">
+                    <h3>⚠️ 失败回退</h3>
+                    <div class="rollback-list">
+                        ${rollbackTransitions.map(t => `
+                            <div class="rollback-item">
+                                <span class="rollback-icon">⚡</span>
+                                <span class="rollback-text">${t.label} → <strong>${t.to}</strong></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            panel.innerHTML = `
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                        <div style="width: 56px; height: 56px; border-radius: 50%; background: ${s.color}30; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                            ${s.icon}
+                        </div>
+                        <div>
+                            <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 4px;">${s.name}</h2>
+                            <span style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: ${s.color}30; color: ${s.color};">${s.label}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>状态说明</h3>
+                    <p>${s.desc}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>进入条件</h3>
+                    <div class="condition-box">${s.entry}</div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>触发报文</h3>
+                    <div class="packet-tags">${packetTags}</div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>状态转换</h3>
+                    <div class="transitions-flow">${transHtml}</div>
+                </div>
+
+                ${rollbackHtml}
+
+                ${s.note ? `
+                <div class="detail-section">
+                    <div class="note-tip">
+                        <h4>💡 补充说明</h4>
+                        <p>${s.note}</p>
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function selectState(stateId) {
+            currentState = stateId;
+            const state = stateData[stateId];
+
+            drawStateDiagram();
+            updateRouterDisplay(stateId);
+            updatePacketFlow(stateId);
+            updateMSC(stateId);
+            updateLSDB(stateId);
+            renderDetail(stateId);
+        }
+
+        $(document).ready(function() {
+            drawStateDiagram();
+            selectState('down');
+        });
+    </script>
+</body>
+</html>
