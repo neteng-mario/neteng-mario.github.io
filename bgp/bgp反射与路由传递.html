@@ -1036,9 +1036,9 @@
                 ] 
             },
             { 
-                title: 'eBGP 路由引入 iBGP', 
+                title: 'eBGP 路由传递到 iBGP', 
                 icon: '📚', 
-                danmaku: '📚 eBGP 路由引入 iBGP: R1→R2 (AS200路由) | R5→R6 (AS100路由)', 
+                danmaku: '📚 eBGP 路由传递到 iBGP: R1→R2 (AS200路由) | R5→R6 (AS100路由)', 
                 pingSuccess: false, 
                 showDropPacket: false,
                 showIbgpSplit: false,
@@ -1061,8 +1061,8 @@
                 }, 
                 aspath: [200, 100],
                 packets: [
-                    {from:3, to:1, type:'ibgp', detail: 'R1→R2: 192.168.1.0/24 (eBGP→iBGP)', route: {prefix: '192.168.1.0/24', aspath: [200]}},
-                    {from:4, to:5, type:'ibgp', detail: 'R5→R6: 192.168.100.0/24 (eBGP→iBGP)', route: {prefix: '192.168.100.0/24', aspath: [100]}}
+                    {from:3, to:1, type:'ibgp', detail: 'R1→R2: 192.168.1.0/24 (eBGP learned)', route: {prefix: '192.168.1.0/24', aspath: [200]}},
+                    {from:4, to:5, type:'ibgp', detail: 'R5→R6: 192.168.100.0/24 (eBGP learned)', route: {prefix: '192.168.100.0/24', aspath: [100]}}
                 ] 
             },
             { 
