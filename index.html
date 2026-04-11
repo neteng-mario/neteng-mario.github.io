@@ -473,6 +473,7 @@
             <a href="#ospf" class="category-btn ospf active" onclick="switchCategory('ospf')">🌿 OSPF</a>
             <a href="#bgp" class="category-btn bgp" onclick="switchCategory('bgp')">🔴 BGP</a>
             <a href="#tools" class="category-btn tool" onclick="switchCategory('tools')">🛠️ 工具手册</a>
+            <a href="#ops-tools" class="category-btn ops" onclick="switchCategory('ops-tools')">🔧 运维工具</a>
         </nav>
 
         <section id="ospf">
@@ -574,6 +575,77 @@
             </div>
         </section>
 
+        <section id="ops-tools">
+            <div class="section-title">
+                <h2><span class="icon">🔧</span> 运维工具</h2>
+                <p>推荐好用的网络运维软件与工具链接</p>
+            </div>
+
+            <div class="projects-grid">
+                <a href="https://mobaxterm.mobatek.net/" target="_blank" class="project-card">
+                    <div class="project-icon green" style="background: transparent; display: flex; align-items: center; justify-content: center;">
+                        <img src="assets/icons/Mobaxterm.png" alt="MobaXterm" style="width: 32px; height: 32px; object-fit: contain;">
+                    </div>
+                    <h3>MobaXterm</h3>
+                    <p>功能强大的终端工具，集成SSH、SFTP、RDP、VNC等多种远程连接功能</p>
+                    <div class="project-tags">
+                        <span class="tag tool">终端工具</span>
+                        <span class="tag tool">SSH</span>
+                        <span class="tag tool">远程连接</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+
+                <a href="https://www.wireshark.org/" target="_blank" class="project-card">
+                    <div class="project-icon blue">🦈</div>
+                    <h3>Wireshark</h3>
+                    <p>网络协议分析工具，支持多种协议捕获和分析，网络故障排查必备</p>
+                    <div class="project-tags">
+                        <span class="tag tool">网络分析</span>
+                        <span class="tag tool">协议捕获</span>
+                        <span class="tag tool">开源</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+
+                <a href="https://www.putty.org/" target="_blank" class="project-card">
+                    <div class="project-icon green">🖥️</div>
+                    <h3>PuTTY</h3>
+                    <p>SSH和Telnet客户端，轻量级远程登录工具，支持串口连接</p>
+                    <div class="project-tags">
+                        <span class="tag tool">远程登录</span>
+                        <span class="tag tool">SSH</span>
+                        <span class="tag tool">轻量</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+
+                <a href="https://www.nmap.org/" target="_blank" class="project-card">
+                    <div class="project-icon red">🔍</div>
+                    <h3>Nmap</h3>
+                    <p>网络扫描和安全评估工具，端口扫描、服务探测、操作系统检测</p>
+                    <div class="project-tags">
+                        <span class="tag tool">网络扫描</span>
+                        <span class="tag tool">安全评估</span>
+                        <span class="tag tool">开源</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+
+                <a href="https://www.advanced-ip-scanner.com/" target="_blank" class="project-card">
+                    <div class="project-icon blue">📊</div>
+                    <h3>Advanced IP Scanner</h3>
+                    <p>局域网IP扫描工具，快速发现网络设备，支持远程控制</p>
+                    <div class="project-tags">
+                        <span class="tag tool">IP扫描</span>
+                        <span class="tag tool">局域网</span>
+                        <span class="tag tool">远程控制</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+            </div>
+        </section>
+
         <footer>
             <p>
                 基于 HTML5 Canvas + JavaScript 构建 ·
@@ -591,7 +663,7 @@
                 }
             });
 
-            const sections = ['ospf', 'bgp', 'tools'];
+            const sections = ['ospf', 'bgp', 'tools', 'ops-tools'];
             sections.forEach(id => {
                 const section = document.getElementById(id);
                 if (id === category) {

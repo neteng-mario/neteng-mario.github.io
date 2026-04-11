@@ -103,6 +103,38 @@
             margin-left: auto;
         }
 
+        .nav-controls {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 0 32px 20px;
+        }
+
+        .nav-btn {
+            padding: 10px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.playing {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--green);
+            color: var(--green);
+        }
+
         .main-container {
             position: relative;
             z-index: 10;
@@ -765,6 +797,12 @@
         <p class="header-subtitle">点击状态节点查看详情 · 理解 OSPF 邻居关系建立过程</p>
     </header>
 
+    <div class="nav-controls">
+        <button class="nav-btn" id="prev-btn">◀ 上一步</button>
+        <button class="nav-btn" id="play-btn">▶ 自动播放</button>
+        <button class="nav-btn" id="next-btn">下一步 ▶</button>
+    </div>
+
     <main class="main-container">
         <div class="left-panel">
             <div class="panel">
@@ -1413,9 +1451,71 @@
             renderDetail(stateId);
         }
 
+        const normalTransitions = [
+            'down', 'init', 'twoway', 'exstart', 'exchange', 'loading', 'full'
+        ];
+
+        let autoPlayTimer = null;
+        let isPlaying = false;
+
+        function goNext() {
+            const idx = normalTransitions.indexOf(currentState);
+            if (idx < normalTransitions.length - 1) {
+                selectState(normalTransitions[idx + 1]);
+            } else if (isPlaying) {
+                stopAutoPlay();
+            }
+        }
+
+        function goPrev() {
+            const idx = normalTransitions.indexOf(currentState);
+            if (idx > 0) {
+                selectState(normalTransitions[idx - 1]);
+            }
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            isPlaying = true;
+            $('#play-btn').text('⏸ 暂停').addClass('playing');
+            autoPlayTimer = setInterval(goNext, 2000);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            $('#play-btn').text('▶ 自动播放').removeClass('playing');
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+            }
+        }
+
         $(document).ready(function() {
             drawStateDiagram();
             selectState('down');
+
+            $('#next-btn').click(goNext);
+            $('#prev-btn').click(goPrev);
+            $('#play-btn').click(toggleAutoPlay);
+
+            $(document).on('keydown', function(e) {
+                if (e.key === 'ArrowRight' || e.key === ' ') {
+                    e.preventDefault();
+                    goNext();
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    goPrev();
+                } else if (e.key === 'p' || e.key === 'P') {
+                    toggleAutoPlay();
+                }
+            });
         });
     </script>
 </body>
