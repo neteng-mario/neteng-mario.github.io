@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSPF 多区域 LSA 传递与路由收敛</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(31, 41, 55, 0.85);
+            --border-color: rgba(148, 163, 184, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --gradient-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            width: 1920px;
+            height: 1080px;
+        }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 1920px;
+            height: 1080px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            height: 70px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            width: 44px; height: 44px;
+            background: var(--gradient-main);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .brand-info h1 {
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .brand-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-indicator {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 24px;
+            text-align: center;
+        }
+
+        .step-indicator .label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .step-indicator .value {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn {
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .btn-play {
+            background: var(--gradient-main);
+            color: white;
+        }
+
+        .btn-play:hover:not(:disabled) { transform: translateY(-2px); }
+        .btn-play.playing { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+
+        .btn-reset {
+            background: var(--bg-secondary);
+            color: white;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 500px;
+            gap: 12px;
+            height: 950px;
+            flex-shrink: 0;
+        }
+
+        .animation-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .animation-panel {
+            flex: 1;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #scene-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .danmaku-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 24px;
+        }
+
+        .danmaku-track {
+            display: flex;
+            justify-content: center;
+        }
+
+        .danmaku-item {
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(15px);
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-left: 4px solid var(--accent-blue);
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.5;
+            max-width: 70%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            animation: danmakuEnter 0.5s ease;
+            word-break: break-all;
+        }
+
+        .danmaku-item strong { color: var(--accent-blue); font-weight: 700; }
+        .danmaku-item .highlight { color: var(--accent-green); font-weight: 700; }
+
+        @keyframes danmakuEnter {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .timeline-bar {
+            height: 70px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 0 16px;
+            flex-shrink: 0;
+        }
+
+        .timeline-list {
+            display: flex;
+            gap: 8px;
+            height: 100%;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .timeline-item {
+            flex-shrink: 0;
+            padding: 9px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid transparent;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .timeline-item:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .timeline-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .timeline-item.completed {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .timeline-item:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .timeline-step-num {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .timeline-item.active .timeline-step-num { color: var(--accent-blue); }
+
+        .timeline-step-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .timeline-item.active .timeline-step-title { color: var(--accent-blue); }
+        .timeline-item.completed .timeline-step-title { color: var(--accent-green); }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            height: 950px;
+            padding-right: 12px;
+            max-width: 500px;
+            width: 500px;
+        }
+
+        .info-section::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .info-section::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .info-section::-webkit-scrollbar-thumb {
+            background: var(--gradient-main);
+            border-radius: 4px;
+        }
+
+        .info-section::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-blue);
+        }
+
+        .info-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            flex-shrink: 0;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-card-icon {
+            width: 28px; height: 28px;
+            background: var(--gradient-main);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .info-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .info-card-content {
+            line-height: 1.5;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .info-card-content p { margin-bottom: 5px; }
+
+        .route-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .route-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .route-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .route-tab.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .route-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .route-table th {
+            text-align: left;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .route-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .route-table tr:hover td {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .route-table tr.new-route {
+            animation: routeFlash 1s ease;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        @keyframes routeFlash {
+            0% { background: rgba(16, 185, 129, 0.4); }
+            100% { background: rgba(255, 255, 255, 0.05); }
+        }
+
+        .route-prefix {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .route-nexthop {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-blue);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .route-area {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-purple);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .route-type {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-orange);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .lsa-box {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid var(--accent-purple);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .lsa-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-purple);
+            margin-bottom: 6px;
+        }
+
+        .lsa-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .lsa-item::before {
+            content: '▸';
+            color: var(--accent-green);
+            position: absolute;
+            left: 0;
+        }
+
+        .convergence-box {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .convergence-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 6px;
+        }
+
+        .convergence-item {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .packet-log {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            height: 120px;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .packet-log-title {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .packet-log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .packet-log-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-size: 12px;
+            animation: logSlideIn 0.3s ease;
+        }
+
+        @keyframes logSlideIn {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .packet-log-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 4px currentColor;
+        }
+
+        .packet-log-text {
+            flex: 1;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            word-break: break-all;
+        }
+
+        .legend-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            height: 45px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .legend-dot {
+            width: 9px; height: 9px;
+            border-radius: 3px;
+            box-shadow: 0 0 7px currentColor;
+        }
+
+        .legend-text {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: var(--gradient-main); border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+        <header class="header">
+            <div class="brand">
+                <div class="brand-logo">🔄</div>
+                <div class="brand-info">
+                    <h1>OSPF 多区域 LSA 传递</h1>
+                    <p>Area 0 + Area 1 | LSA 类型传递 | 路由收敛</p>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="step-indicator">
+                    <div class="label">步骤</div>
+                    <div class="value" id="step-display">01 / 12</div>
+                </div>
+                <button class="btn btn-reset" onclick="resetAnimation()">🔄</button>
+                <button class="btn btn-play" id="play-btn" onclick="togglePlay()">
+                    <span id="play-icon">▶</span>
+                    <span id="play-text">播放</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="animation-section">
+                <div class="animation-panel">
+                    <div class="canvas-container">
+                        <canvas id="scene-canvas"></canvas>
+                        <div class="danmaku-container">
+                            <div class="danmaku-track" id="danmaku-track"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-bar">
+                    <div class="timeline-list" id="timeline-list"></div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon" id="info-icon">📍</div>
+                        <div class="info-card-title" id="info-title">网络拓扑</div>
+                    </div>
+                    <div class="info-card-content" id="info-content">
+                        <p><strong>Area 0 (骨干区域):</strong> R1 (ABR), R2, R3</p>
+                        <p><strong>Area 1 (非骨干区域):</strong> R1 (ABR), R4, R5</p>
+                        <p><strong>终端设备:</strong> PC1 (192.168.0.10) → R2, PC2 (192.168.1.10) → R5</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">📊</div>
+                        <div class="info-card-title">OSPF 路由表</div>
+                    </div>
+                    <div style="padding: 0 16px 8px; font-size: 12px; color: var(--text-secondary);">
+                        <span style="margin-right: 12px;"><strong style="color: #3b82f6;">O</strong>：区域内路由</span>
+                        <span style="margin-right: 12px;"><strong style="color: #8b5cf6;">O IA</strong>：区域间路由</span>
+                        <span style="margin-right: 12px;"><strong style="color: #f59e0b;">O E1</strong>：外部路由类型1</span>
+                        <span><strong style="color: #ef4444;">O E2</strong>：外部路由类型2</span>
+                    </div>
+                    <div class="route-tabs" style="overflow-x: auto; white-space: nowrap;">
+                        <div class="route-tab active" onclick="switchRouteTable('R1')" id="tab-R1">R1</div>
+                        <div class="route-tab" onclick="switchRouteTable('ABR1')" id="tab-ABR1">ABR1</div>
+                        <div class="route-tab" onclick="switchRouteTable('ABR2')" id="tab-ABR2">ABR2</div>
+                        <div class="route-tab" onclick="switchRouteTable('ABR3')" id="tab-ABR3">ABR3</div>
+                        <div class="route-tab" onclick="switchRouteTable('R3')" id="tab-R3">R3</div>
+                        <div class="route-tab" onclick="switchRouteTable('R4')" id="tab-R4">R4</div>
+                        <div class="route-tab" onclick="switchRouteTable('R5')" id="tab-R5">R5</div>
+                        <div class="route-tab" onclick="switchRouteTable('R6')" id="tab-R6">R6</div>
+                    </div>
+                    <table class="route-table">
+                        <thead>
+                            <tr>
+                                <th>前缀</th>
+                                <th>下一跳</th>
+                                <th>区域</th>
+                                <th>类型</th>
+                            </tr>
+                        </thead>
+                        <tbody id="route-table-body">
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-tertiary); font-size: 14px;">暂无路由</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">🔗</div>
+                        <div class="info-card-title">LSA 类型与传递</div>
+                    </div>
+                    <div class="lsa-box" id="lsa-box">
+                        <div class="lsa-box-title">LSA 传递规则</div>
+                        <div class="lsa-item">Type 1 (Router LSA): 仅在本区域内传递</div>
+                        <div class="lsa-item">Type 2 (Network LSA): 仅在本区域内传递</div>
+                        <div class="lsa-item">Type 3 (Summary LSA): ABR 生成，跨区域传递</div>
+                        <div class="lsa-item">Type 4 (ASBR Summary): ABR 生成，跨区域传递</div>
+                        <div class="lsa-item">Type 5 (External LSA): ASBR 生成，全网传递</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">⚙️</div>
+                        <div class="info-card-title">路由收敛过程</div>
+                    </div>
+                    <div class="convergence-box" id="convergence-box">
+                        <div class="convergence-title">收敛步骤</div>
+                        <div class="convergence-item">1. 区域内 LSDB 同步</div>
+                        <div class="convergence-item">2. ABR 生成 Summary LSA</div>
+                        <div class="convergence-item">3. 跨区域 LSA 传递</div>
+                        <div class="convergence-item">4. 各路由器计算最短路径</div>
+                        <div class="convergence-item">5. 路由表更新</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">📋</div>
+                        <div class="info-card-title">LSU 报文</div>
+                    </div>
+                    <div class="packet-log">
+                        <div class="packet-log-title">🔍 实时捕获</div>
+                        <div class="packet-log-list" id="packet-log-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend-bar">
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-blue);"></div>
+                <span class="legend-text">Area 0</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-purple);"></div>
+                <span class="legend-text">Area 1</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #ec4899;"></div>
+                <span class="legend-text">Area 2</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #10b981;"></div>
+                <span class="legend-text">Area 3</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-orange);"></div>
+                <span class="legend-text">VLink</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-green);"></div>
+                <span class="legend-text">LSU</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-red);"></div>
+                <span class="legend-text">PC</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            STEP_DURATION: 8000,
+            PACKET_SPEED: 0.008,
+            DANMAKU_DURATION: 8000,
+            DANMAKU_FADE_DELAY: 300,
+            PARTICLE_COUNT: 80
+        };
+
+        const state = {
+            currentStep: 0, isPlaying: false, playInterval: null,
+            particles: [], packets: [], packetLog: [],
+            time: 0, currentMode: 'full', totalPackets: 0,
+            currentDanmaku: null, danmakuTimer: null, isTransitioning: false,
+            routes: { R1: [], R2: [], R3: [], R4: [], R5: [], R6: [] },
+            currentRouteTable: 'R1',
+            pingSuccess: false,
+            allPacketsCompleted: true
+        };
+
+        const canvas = document.getElementById('scene-canvas');
+        const ctx = canvas.getContext('2d');
+        const danmakuTrack = document.getElementById('danmaku-track');
+
+        // 网络拓扑设备（VLink 真实拓扑）
+        // Area 0: R1 (内部路由), ABR1(连接Area1), ABR2(连接Area2 Transit)
+        // Area 1: ABR1-R4-R5 (非骨干区域)
+        // Area 2: ABR2-R6 (Transit Area 中转区域，VLink 通过此区域)
+        // Area 3: R2-R3 (非骨干区域，通过 VLink 连接到骨干区域)
+        const devices = [
+            { id: 0, name: 'R1', ip: '10.0.0.1/30', area: 0, x: 0, y: 0, color: '#1e40af', type: 'router', role: 'Internal', routes: [], pulse: 0 },
+            { id: 1, name: 'ABR2', ip: '10.0.2.2/30', area: 0, x: 0, y: 0, color: '#3b82f6', type: 'router', role: 'ABR', routes: [], pulse: 0 },
+            { id: 2, name: 'ABR1', ip: '10.0.1.2/30', area: 0, x: 0, y: 0, color: '#60a5fa', type: 'router', role: 'ABR', routes: [], pulse: 0 },
+            { id: 3, name: 'R4', ip: '10.1.1.2/30', area: 1, x: 0, y: 0, color: '#8b5cf6', type: 'router', role: 'Internal', routes: [], pulse: 0 },
+            { id: 4, name: 'R5', ip: '10.1.0.2/30', area: 1, x: 0, y: 0, color: '#8b5cf6', type: 'router', role: 'Internal', routes: [], pulse: 0 },
+            { id: 5, name: 'R6', ip: '10.2.1.2/30', area: 2, x: 0, y: 0, color: '#ec4899', type: 'router', role: 'Internal', routes: [], pulse: 0 },
+            { id: 6, name: 'ABR3', ip: '10.2.2.2/30', area: 3, x: 0, y: 0, color: '#10b981', type: 'router', role: 'ABR', routes: [], pulse: 0 },
+            { id: 7, name: 'R3', ip: '10.3.0.2/30', area: 3, x: 0, y: 0, color: '#10b981', type: 'router', role: 'Internal', routes: [], pulse: 0 },
+            { id: 8, name: 'PC1', ip: '192.168.0.10/24', area: 0, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 },
+            { id: 9, name: 'PC2', ip: '192.168.1.10/24', area: 1, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 },
+            { id: 10, name: 'PC3', ip: '192.168.2.10/24', area: 2, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 },
+            { id: 11, name: 'PC4', ip: '192.168.3.10/24', area: 3, x: 0, y: 0, color: '#ef4444', type: 'pc', role: 'Host', pulse: 0 }
+        ];
+
+        // 拓扑连接
+        // Area 0: R1(内部), ABR1, ABR2 三角连接 (完整骨干区域)
+        // Area 1: ABR1-R5-R4 (非骨干区域)
+        // Area 2 (Transit Area): ABR2-R6-ABR3 ( Transit Area，ABR3同时属于Area3)
+        // Area 3: ABR3-R3 (ABR3是ABR，同时连接Area 2)
+        // VLink: ABR3 ↔ ABR2，属于Area 0，穿越Transit Area (Area 2)
+        // VLink原理：ABR3和ABR2都在Transit Area有端口，VLink是骨干区域的延伸
+        const connections = [
+            // Area 0 内部连接 (骨干区域)
+            { from: 0, to: 2, type: 'ospf', label: 'Area 0' },
+            { from: 0, to: 1, type: 'ospf', label: 'Area 0' },
+            { from: 1, to: 2, type: 'ospf', label: 'Area 0' },
+            // Area 1 连接 (非骨干)
+            { from: 2, to: 4, type: 'ospf', label: 'Area 1' },
+            { from: 4, to: 3, type: 'ospf', label: 'Area 1' },
+            // Area 2 (Transit Area) 连接 - ABR2和ABR3都在此区域
+            { from: 1, to: 5, type: 'ospf', label: 'Area 2' },
+            { from: 5, to: 6, type: 'ospf', label: 'Area 2' },
+            // Area 3 连接 (ABR3-R3，ABR3同时是Area 3的ABR)
+            { from: 6, to: 7, type: 'ospf', label: 'Area 3' },
+            // VLink (ABR之间，属于Area 0，穿越Transit Area) - 初始隐藏
+            { from: 6, to: 1, type: 'vlink', label: 'VLink (Area 0)', hidden: true },
+            // LAN 连接
+            { from: 0, to: 8, type: 'ethernet', label: 'LAN' },
+            { from: 3, to: 9, type: 'ethernet', label: 'LAN' },
+            { from: 5, to: 10, type: 'ethernet', label: 'LAN' },
+            { from: 7, to: 11, type: 'ethernet', label: 'LAN' }
+        ];
+
+                const steps = [
+            {
+                title: '多区域邻居建立',
+                icon: '🤝',
+                danmaku: '🤝 Area 0/1/2/3 同步建立邻居关系，R1 当选 Area 0 的 DR',
+                pingSuccess: false,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '192.168.0.0/24', nexthop: '直连', area: '0', type: 'O' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ]
+                },
+                packets: [
+                    // Area 0 邻居建立
+                    {from:0,to:2,type:'hello',detail: 'R1→ABR1: Hello', route: null},
+                    {from:2,to:0,type:'hello',detail: 'ABR1→R1: Hello', route: null},
+                    {from:0,to:1,type:'hello',detail: 'R1→ABR2: Hello', route: null},
+                    {from:1,to:0,type:'hello',detail: 'ABR2→R1: Hello', route: null},
+                    // Area 1 邻居建立
+                    {from:2,to:4,type:'hello',detail: 'ABR1→R5: Hello', route: null},
+                    {from:4,to:2,type:'hello',detail: 'R5→ABR1: Hello', route: null},
+                    {from:4,to:3,type:'hello',detail: 'R5→R4: Hello', route: null},
+                    {from:3,to:4,type:'hello',detail: 'R4→R5: Hello', route: null},
+                    // Area 2 邻居建立
+                    {from:1,to:5,type:'hello',detail: 'ABR2→R6: Hello', route: null},
+                    {from:5,to:1,type:'hello',detail: 'R6→ABR2: Hello', route: null},
+                    {from:5,to:6,type:'hello',detail: 'R6→ABR3: Hello', route: null},
+                    {from:6,to:5,type:'hello',detail: 'ABR3→R6: Hello', route: null},
+                    // Area 3 邻居建立
+                    {from:6,to:7,type:'hello',detail: 'ABR3→R3: Hello', route: null},
+                    {from:7,to:6,type:'hello',detail: 'R3→ABR3: Hello', route: null}
+                ]
+            },
+            {
+                title: '区域内路由收敛',
+                icon: '📡',
+                danmaku: '📡 各区域内部路由收敛完成，但 Area 3 无法直接传递到 Area 2',
+                pingSuccess: false,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '192.168.0.0/24', nexthop: '直连', area: '0', type: 'O' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.1.0.2', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.1.0.2', area: '1', type: 'O' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.2.1.2', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.2.1.2', area: '2', type: 'O' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.1.1.1', area: '1', type: 'O' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.1.1.2', area: '1', type: 'O' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.2.2.1', area: '2', type: 'O' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ]
+                },
+                packets: [
+                    // Area 0 路由收敛
+                    {from:0,to:1,type:'lsu',detail: 'R1→ABR2: Type 1 LSA', route: null},
+                    {from:1,to:0,type:'lsu',detail: 'ABR2→R1: Type 1 LSA', route: null},
+                    {from:0,to:2,type:'lsu',detail: 'R1→ABR1: Type 1 LSA', route: null},
+                    {from:2,to:0,type:'lsu',detail: 'ABR1→R1: Type 1 LSA', route: null},
+                    // Area 1 路由收敛
+                    {from:2,to:4,type:'lsu',detail: 'ABR1→R5: Type 1 LSA', route: null},
+                    {from:4,to:3,type:'lsu',detail: 'R5→R4: Type 1 LSA', route: null},
+                    // Area 2 路由收敛
+                    {from:1,to:5,type:'lsu',detail: 'ABR2→R6: Type 1 LSA (Area 2)', route: null},
+                    {from:5,to:6,type:'lsu',detail: 'R6→ABR3: Type 1 LSA (Area 2)', route: null},
+                    {from:6,to:5,type:'lsu',detail: 'ABR3→R6: Type 1 LSA (Area 2)', route: null},
+                    // Area 3 路由收敛
+                    {from:6,to:7,type:'lsu',detail: 'ABR3→R3: Type 1 LSA', route: null}
+                ]
+            },
+            {
+                title: '跨区域路由问题',
+                icon: '⚠️',
+                danmaku: '⚠️ Area 3 的 Type 3 LSA 无法传递到 Area 0，其他区域无法访问 Area 3，需要 VLink',
+                pingSuccess: false,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '192.168.0.0/24', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.1.1', area: '2', type: 'O IA' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.0.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ]
+                },
+                packets: [
+                    // ABR1 向 DR (R1) 传递 Area 1 的 Type 3 LSA
+                    {from:2,to:0,type:'lsu',detail: 'ABR1→R1(DR): Type 3 LSA (Area 1)', route: null},
+                    // ABR2 向 DR (R1) 传递 Area 2 的 Type 3 LSA
+                    {from:1,to:0,type:'lsu',detail: 'ABR2→R1(DR): Type 3 LSA (Area 2)', route: null},
+                    // DR (R1) 向 ABR2 泛洪 Area 1 的 Type 3 LSA
+                    {from:0,to:1,type:'lsu',detail: 'R1(DR)→ABR2: Type 3 LSA (Area 1)', route: null},
+                    // DR (R1) 向 ABR1 泛洪 Area 2 的 Type 3 LSA
+                    {from:0,to:2,type:'lsu',detail: 'R1(DR)→ABR1: Type 3 LSA (Area 2)', route: null},
+                    // ABR2 向 Area 2 泛洪 Area 1 的 Type 3 LSA
+                    {from:1,to:5,type:'lsu',detail: 'ABR2→R6: Type 3 LSA (Area 1)', route: null},
+                    // ABR1 向 Area 1 泛洪 Area 2 的 Type 3 LSA
+                    {from:2,to:4,type:'lsu',detail: 'ABR1→R5: Type 3 LSA (Area 2)', route: null}
+                ]
+            },
+            {
+                title: 'Ping 测试失败',
+                icon: '❌',
+                danmaku: '❌ 没有 VLink 时，R3 没有到 Area 1 的路由，ping 在 R3 中断',
+                pingSuccess: false,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '192.168.0.0/24', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ]
+                },
+                packets: [
+                    {from:11,to:7,type:'ping',detail: 'PC4→R3: ICMP Echo Request (失败)', route: {prefix: '192.168.1.0/24', area: '1'}}
+                    // R3 没有到 Area 1 的路由，ping 在此中断
+                ]
+            },
+            {
+                title: 'VLink 建立',
+                icon: '🔗',
+                danmaku: '🔗 VLink: ABR3 ↔ ABR2 建立 Area 0 逻辑邻居，解决 Area 3 路由传递问题',
+                pingSuccess: false,
+                setup: function() {
+                    // 显示VLink连接
+                    connections.find(c => c.type === 'vlink').hidden = false;
+                },
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' }
+                    ]
+                },
+                packets: [
+                    // VLink Hello 报文交换
+                    {from:6,to:5,type:'hello',detail: 'ABR3→R6: VLink Hello [穿越Transit]', route: null},
+                    {from:5,to:1,type:'hello',detail: 'R6→ABR2: VLink Hello [穿越Transit]', route: null},
+                    {from:1,to:5,type:'hello',detail: 'ABR2→R6: VLink Hello [穿越Transit]', route: null},
+                    {from:5,to:6,type:'hello',detail: 'R6→ABR3: VLink Hello [穿越Transit]', route: null}
+                ]
+            },
+            {
+                title: 'VLink 路由传递',
+                icon: '🌐',
+                danmaku: '🌐 VLink 传递 Area 3 的 Type 3 LSA 到 Area 0，实现全网路由',
+                pingSuccess: false,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.2.2', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.2.2', area: '3', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.1.1', area: '3', type: 'O IA' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.2.1.2', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.1.2', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.1.2', area: '3', type: 'O IA' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.1.1.1', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.1.1', area: '3', type: 'O IA' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.0.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.0.1', area: '3', type: 'O IA' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.2.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.2.1', area: '3', type: 'O IA' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.3.0.1', area: '3', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.3.0.1', area: '1', type: 'O IA' }
+                    ]
+                },
+                packets: [
+                    {from:6,to:5,type:'lsu',detail: 'ABR3→R6: Type 3 LSA (Area 3) [VLink]', route: null},
+                    {from:5,to:1,type:'lsu',detail: 'R6→ABR2: Type 3 LSA (Area 3) [VLink]', route: null},
+                    {from:1,to:0,type:'lsu',detail: 'ABR2→R1: Type 3 LSA (Area 3) [VLink]', route: null},
+                    {from:0,to:2,type:'lsu',detail: 'R1→ABR1: Type 3 LSA (Area 3) [VLink]', route: null},
+                    {from:2,to:4,type:'lsu',detail: 'ABR1→R5: Type 3 LSA (Area 3) [VLink]', route: null},
+                    {from:4,to:3,type:'lsu',detail: 'R5→R4: Type 3 LSA (Area 3) [VLink]', route: null}
+                ]
+            },
+            {
+                title: '路由收敛完成',
+                icon: '✅',
+                danmaku: '✅ 收敛完成：VLink 逻辑通道使 Area 3 通过 Transit Area 与骨干区域互通',
+                pingSuccess: true,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.2.2', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.2.2', area: '3', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.1.1', area: '3', type: 'O IA' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.2.1.2', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.1.2', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.1.2', area: '3', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.0.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.1.1.1', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.1.1', area: '3', type: 'O IA' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.0.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.0.1', area: '3', type: 'O IA' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.2.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.2.1', area: '3', type: 'O IA' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.3.0.1', area: '3', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.3.0.1', area: '1', type: 'O IA' }
+                    ]
+                },
+                setup: function() {
+                    state.highlightPath = [11, 7, 6, 5, 1, 2, 4, 9]; // PC4→R3→ABR3→R6→ABR2→ABR1→R5→PC2
+                    state.pathAnimationProgress = 0;
+                },
+                packets: []
+            },
+            {
+                title: 'PC4 Ping PC2',
+                icon: '📡',
+                danmaku: '📡 PC4 (Area 3) → PC2 (Area 1): 通过 VLink 跨区域 Ping 测试成功',
+                pingSuccess: true,
+                routes: {
+                    R1: [
+                        { prefix: '10.0.0.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.1.2', area: '1', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.2.2', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.2.2', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.2.2', area: '3', type: 'O IA' }
+                    ],
+                    ABR1: [
+                        { prefix: '10.0.1.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.0.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.0.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.0.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.0.1.1', area: '3', type: 'O IA' }
+                    ],
+                    ABR2: [
+                        { prefix: '10.0.2.0/30', nexthop: '直连', area: '0', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.2.1.2', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.1.2', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.1.2', area: '3', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.0.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.0.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.0.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R4: [
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.1.1.1', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.1.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.1.1', area: '3', type: 'O IA' }
+                    ],
+                    R5: [
+                        { prefix: '10.1.0.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.1.1.0/30', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '192.168.1.0/24', nexthop: '直连', area: '1', type: 'O' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.1.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.1.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.1.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.1.0.1', area: '3', type: 'O IA' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.1.0.1', area: '3', type: 'O IA' }
+                    ],
+                    R6: [
+                        { prefix: '10.2.1.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.1.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.1.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.1.1', area: '1', type: 'O IA' },
+                        { prefix: '10.3.0.0/30', nexthop: '10.2.2.1', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '10.2.2.1', area: '3', type: 'O' }
+                    ],
+                    ABR3: [
+                        { prefix: '10.2.2.0/30', nexthop: '直连', area: '2', type: 'O' },
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.2.2.1', area: '2', type: 'O' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.2.2.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.2.2.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.2.2.1', area: '1', type: 'O IA' }
+                    ],
+                    R3: [
+                        { prefix: '10.3.0.0/30', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '192.168.3.0/24', nexthop: '直连', area: '3', type: 'O' },
+                        { prefix: '10.2.2.0/30', nexthop: '10.3.0.1', area: '3', type: 'O IA' },
+                        { prefix: '10.2.1.0/30', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '192.168.2.0/24', nexthop: '10.3.0.1', area: '2', type: 'O IA' },
+                        { prefix: '10.0.2.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.0.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.0.1.0/30', nexthop: '10.3.0.1', area: '0', type: 'O IA' },
+                        { prefix: '10.1.0.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '10.1.1.0/30', nexthop: '10.3.0.1', area: '1', type: 'O IA' },
+                        { prefix: '192.168.1.0/24', nexthop: '10.3.0.1', area: '1', type: 'O IA' }
+                    ]
+                },
+                packets: [
+                    {from:11,to:7,type:'ping',detail: 'PC4→R3: ICMP Echo Request', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:7,to:6,type:'ping',detail: 'R3→ABR3: ICMP [Area 3内部]', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:6,to:5,type:'ping',detail: 'ABR3→R6: ICMP [VLink物理路径]', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:5,to:1,type:'ping',detail: 'R6→ABR2: ICMP [VLink物理路径]', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:1,to:2,type:'ping',detail: 'ABR2→ABR1: ICMP [骨干区域]', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:2,to:4,type:'ping',detail: 'ABR1→R5: ICMP Echo Request', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:4,to:9,type:'ping',detail: 'R5→PC2: ICMP Echo Request', route: {prefix: '192.168.1.0/24', area: '1'}}, 
+                    {from:9,to:4,type:'ping',detail: 'PC2→R5: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:4,to:2,type:'ping',detail: 'R5→ABR1: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:2,to:1,type:'ping',detail: 'ABR1→ABR2: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:1,to:5,type:'ping',detail: 'ABR2→R6: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:5,to:6,type:'ping',detail: 'R6→ABR3: ICMP Echo Reply [VLink物理路径]', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:6,to:7,type:'ping',detail: 'ABR3→R3: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}, 
+                    {from:7,to:11,type:'ping',detail: 'R3→PC4: ICMP Echo Reply', route: {prefix: '192.168.3.0/24', area: '3'}}
+                ]
+            }
+        ];
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width / window.devicePixelRatio;
+                this.y = Math.random() * canvas.height / window.devicePixelRatio;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 2 + 1;
+                this.alpha = Math.random() * 0.5 + 0.15;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width / window.devicePixelRatio) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height / window.devicePixelRatio) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(59, 130, 246, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        class Packet {
+            constructor(type, from, to, delay = 0, detail = '') {
+                this.type = type; this.from = from; this.to = to; this.detail = detail;
+                this.delay = delay; this.progress = 0; this.completed = false;
+                this.size = 0; this.maxSize = 18;
+                this.startTime = Date.now() + delay; this.started = false;
+                this.isVLink = (from === 6 && to === 1) || (from === 1 && to === 6);
+                // 解析区域信息
+                this.area = this.getAreaFromDetail();
+            }
+            getAreaFromDetail() {
+                if (this.detail.includes('Area 1')) return 1;
+                if (this.detail.includes('Area 2')) return 2;
+                if (this.detail.includes('Area 3')) return 3;
+                if (this.detail.includes('Area 0')) return 0;
+                // 根据设备判断区域，特别处理ABR的情况
+                const fromArea = devices[this.from].area;
+                const toArea = devices[this.to].area;
+                // 如果其中一个是ABR（area 0），另一个不是，则使用非0的区域
+                if (fromArea === 0 && toArea !== 0) return toArea;
+                if (toArea === 0 && fromArea !== 0) return fromArea;
+                // 处理ABR3的特殊情况：ABR3同时属于Area 2和Area 3
+                if ((this.from === 5 && this.to === 6) || (this.from === 6 && this.to === 5)) {
+                    return 2; // Area 2 (Transit Area)
+                }
+                // 如果两者相同，使用该区域
+                if (fromArea === toArea) return fromArea;
+                // 默认返回0
+                return 0;
+            }
+            update() {
+                if (!this.started && Date.now() >= this.startTime) this.started = true;
+                if (this.started && this.progress < 1) {
+                    // 加快ping包的传输速度
+                    const speed = this.type === 'ping' ? 0.012 : 0.006;
+                    this.progress += speed;
+                    if (this.size < this.maxSize) this.size += speed * 100;
+                } else if (this.progress >= 1) {
+                    this.completed = true;
+                }
+            }
+            draw() {
+                if (!this.started) return;
+                const d1 = devices[this.from], d2 = devices[this.to];
+                const x = d1.x + (d2.x - d1.x) * this.progress;
+                const y = d1.y + (d2.y - d1.y) * this.progress;
+
+                let color = '#3b82f6';
+                let isPingFailed = false;
+                
+                // 检查是否是ping测试失败的情况
+                if (this.type === 'ping' && this.detail.includes('PC4→R3: ICMP Echo Request') && this.detail.includes('失败')) {
+                    color = '#ef4444'; // 红色表示失败
+                    isPingFailed = true;
+                } else if (this.type === 'ping') {
+                    color = '#10b981'; // 绿色表示成功
+                } else if (this.type === 'hello') {
+                    color = '#3b82f6';
+                } else if (this.type === 'lsack') {
+                    color = '#f59e0b';
+                } else if (this.isVLink) {
+                    color = '#f59e0b';
+                // 不同区域的Type 1 LSA使用不同颜色
+                } else if (this.type === 'lsu' && this.detail.includes('Type 1 LSA')) {
+                    if (this.area === 1) color = '#8b5cf6'; // Area 1 - 紫色
+                    else if (this.area === 2) color = '#ec4899'; // Area 2 - 粉色
+                    else if (this.area === 3) color = '#10b981'; // Area 3 - 绿色
+                    else if (this.area === 0) color = '#3b82f6'; // Area 0 - 蓝色
+                }
+
+                if (this.isVLink) {
+                    ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
+                    ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(x, y); ctx.stroke();
+                }
+
+                // 为ping失败添加特殊效果
+                if (isPingFailed) {
+                    // 红色发光效果
+                    const failureGlow = ctx.createRadialGradient(x, y, 0, x, y, this.size * 4);
+                    failureGlow.addColorStop(0, '#ef4444' + '90');
+                    failureGlow.addColorStop(0.5, '#f87171' + '60');
+                    failureGlow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = failureGlow;
+                    ctx.beginPath(); ctx.arc(x, y, this.size * 4, 0, Math.PI * 2); ctx.fill();
+                    
+                    // 闪烁效果
+                    const flashIntensity = Math.sin(state.time * 10) * 0.5 + 0.5;
+                    ctx.fillStyle = `rgba(239, 68, 68, ${0.8 + flashIntensity * 0.2})`;
+                    ctx.beginPath(); ctx.arc(x, y, this.size * 1.5, 0, Math.PI * 2); ctx.fill();
+                    
+                    // 爆炸效果（当数据包到达目标时）
+                    if (this.progress > 0.95) {
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2;
+                            const distance = (1 - this.progress) * 100;
+                            const px = x + Math.cos(angle) * distance;
+                            const py = y + Math.sin(angle) * distance;
+                            ctx.fillStyle = `rgba(239, 68, 68, ${1 - this.progress})`;
+                            ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+                        }
+                    }
+                } else {
+                    // 正常数据包效果
+                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.size * 2.5);
+                    gradient.addColorStop(0, color + '90');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath(); ctx.arc(x, y, this.size * 2.5, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.save(); ctx.translate(x, y); ctx.rotate(this.progress * Math.PI * 2);
+                    const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                    grad.addColorStop(0, color); grad.addColorStop(1, color + 'cc');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2;
+                        const px = Math.cos(a) * this.size, py = Math.sin(a) * this.size;
+                        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath(); ctx.fill(); ctx.restore();
+                }
+
+                // 显示数据包类型
+                ctx.fillStyle = 'white'; ctx.font = 'bold 11px Inter';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(this.type.toUpperCase(), x, y);
+                
+                // 对于ping失败的数据包，显示"FAIL"标记
+                if (isPingFailed) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 8px Inter';
+                    ctx.fillText('FAIL', x, y + 15);
+                }
+            }
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth * window.devicePixelRatio;
+            canvas.height = container.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        function updateDevicePositions() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cx = w / 2, cy = h / 2;
+
+            // Area 0 (骨干区域) - 中心椭圆，三角形布局
+            devices[0].x = cx - 80; devices[0].y = cy - 20;     // R1 - 中心
+            devices[1].x = cx + 60; devices[1].y = cy + 140;  // ABR2 - Area 0与Area 2视觉中心（左下45度挪动）
+            devices[2].x = cx - 300; devices[2].y = cy - 120;  // ABR1 - Area 0与Area 1视觉中心
+
+            // Area 1 (非骨干区域) - 左上角
+            devices[4].x = cx - 360; devices[4].y = cy - 220;  // R5
+            devices[3].x = cx - 500; devices[3].y = cy - 220;  // R4
+
+            // Area 2 (Transit Area) - 右方椭圆
+            devices[5].x = cx + 220; devices[5].y = cy + 220;  // R6 - Area 2椭圆中心
+            devices[6].x = cx + 370; devices[6].y = cy + 140;  // ABR3 - Area 2与Area 3边界（参照规则）
+
+            // Area 3 (独立区域) - 右方椭圆
+            devices[7].x = cx + 480; devices[7].y = cy + 100;  // R3 - 靠近Area 2
+
+            // PC 设备 - 各区域的终端
+            devices[8].x = cx - 80; devices[8].y = cy - 200;  // PC1 - Area 0 (挪到椭圆正上方椭圆线位置)
+            devices[9].x = cx - 580; devices[9].y = cy - 220;  // PC2 - Area 1
+            devices[10].x = cx + 120; devices[10].y = cy + 320;  // PC3 - Area 2 (往左挪避免遮挡)
+            devices[11].x = cx + 580; devices[11].y = cy + 100;  // PC4 - Area 3 (连接到R3)
+        }
+
+        function drawDevice(device) {
+            const pulse = Math.sin(state.time * 2) * 5 + device.pulse * 12;
+            device.pulse *= 0.9;
+            const hasRoutes = device.routes && device.routes.length > 0;
+
+            if (device.type === 'pc') {
+                // PC 样式 (保留原有风格)
+                const glow = ctx.createRadialGradient(device.x, device.y, 20, device.x, device.y, 50 + pulse);
+                glow.addColorStop(0, device.color + '40');
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(device.x, device.y, 50 + pulse, 0, Math.PI * 2); ctx.fill();
+
+                // PC 主机
+                ctx.fillStyle = device.color + 'cc';
+                ctx.beginPath(); ctx.roundRect(device.x - 25, device.y - 18, 50, 36, 6); ctx.fill();
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath(); ctx.roundRect(device.x - 20, device.y - 13, 40, 26, 4); ctx.fill();
+
+                ctx.fillStyle = state.pingSuccess ? '#22c55e' : '#ef4444';
+                ctx.font = 'bold 12px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.fillText(state.pingSuccess ? 'OK' : '...', device.x, device.y + 5);
+
+                ctx.fillStyle = 'white'; ctx.font = 'bold 14px Inter';
+                ctx.fillText(device.name, device.x, device.y + 45);
+                ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '10px Inter';
+                ctx.fillText(device.ip, device.x, device.y + 58);
+            } else {
+                // 路由器样式 - BGP 项目风格的发光圆形
+                if (device.role === 'ABR') {
+                    let leftColor, rightColor;
+                    
+                    // 为每个ABR单独设置颜色
+                    if (device.name === 'ABR1') {
+                        leftColor = '#8b5cf6'; // Area 1 紫色
+                        rightColor = '#3b82f6'; // Area 0 蓝色
+                    } else if (device.name === 'ABR2') {
+                        leftColor = '#3b82f6'; // Area 0 蓝色
+                        rightColor = '#ec4899'; // Area 2 粉色
+                    } else if (device.name === 'ABR3') {
+                        leftColor = '#ec4899'; // Area 2 粉色
+                        rightColor = '#10b981'; // Area 3 绿色
+                    } else {
+                        leftColor = '#8b5cf6'; // 默认Area 1 紫色
+                        rightColor = '#3b82f6'; // 默认Area 0 蓝色
+                    }
+                    
+                    // 双色发光效果
+                    for (let i = 3; i >= 1; i--) {
+                        // 左侧发光
+                        const glowLeft = ctx.createRadialGradient(device.x - 15, device.y, 25, device.x - 15, device.y, 55 + pulse + i * 10);
+                        glowLeft.addColorStop(0, leftColor + `${Math.floor(30/i).toString(16).padStart(2, '0')}`);
+                        glowLeft.addColorStop(1, 'transparent');
+                        ctx.fillStyle = glowLeft;
+                        ctx.beginPath(); ctx.arc(device.x - 15, device.y, 55 + pulse + i * 10, 0, Math.PI * 2); ctx.fill();
+                        
+                        // 右侧发光
+                        const glowRight = ctx.createRadialGradient(device.x + 15, device.y, 25, device.x + 15, device.y, 55 + pulse + i * 10);
+                        glowRight.addColorStop(0, rightColor + `${Math.floor(30/i).toString(16).padStart(2, '0')}`);
+                        glowRight.addColorStop(1, 'transparent');
+                        ctx.fillStyle = glowRight;
+                        ctx.beginPath(); ctx.arc(device.x + 15, device.y, 55 + pulse + i * 10, 0, Math.PI * 2); ctx.fill();
+                    }
+
+                    // 路由器外圈 - 双色
+                    ctx.lineWidth = 3;
+                    // 左侧颜色
+                    ctx.strokeStyle = leftColor;
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 28, Math.PI / 2, Math.PI * 3 / 2); ctx.stroke();
+                    // 右侧颜色
+                    ctx.strokeStyle = rightColor;
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 28, Math.PI * 3 / 2, Math.PI / 2); ctx.stroke();
+
+                    // 路由器内圈 - 双色
+                    // 左侧颜色
+                    ctx.fillStyle = leftColor + '30';
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 25, Math.PI / 2, Math.PI * 3 / 2); ctx.fill();
+                    // 右侧颜色
+                    ctx.fillStyle = rightColor + '30';
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 25, Math.PI * 3 / 2, Math.PI / 2); ctx.fill();
+                } else {
+                    // 普通路由器样式
+                    for (let i = 3; i >= 1; i--) {
+                        const glow = ctx.createRadialGradient(device.x, device.y, 25, device.x, device.y, 55 + pulse + i * 10);
+                        glow.addColorStop(0, device.color + `${Math.floor(30/i).toString(16).padStart(2, '0')}`);
+                        glow.addColorStop(1, 'transparent');
+                        ctx.fillStyle = glow;
+                        ctx.beginPath(); ctx.arc(device.x, device.y, 55 + pulse + i * 10, 0, Math.PI * 2); ctx.fill();
+                    }
+
+                    // 路由器外圈
+                    ctx.strokeStyle = device.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 28, 0, Math.PI * 2); ctx.stroke();
+
+                    // 路由器内圈
+                    ctx.fillStyle = device.color + '30';
+                    ctx.beginPath(); ctx.arc(device.x, device.y, 25, 0, Math.PI * 2); ctx.fill();
+                }
+
+                // 路由器名称
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 18px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(device.name, device.x, device.y + 48);
+
+                // 角色标记
+                if (device.role === 'DR') {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.font = 'bold 12px Inter';
+                    ctx.fillText('★ DR', device.x, device.y - 38);
+                } else if (device.role === 'ABR') {
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.font = 'bold 11px Inter';
+                    ctx.fillText('ABR', device.x, device.y - 38);
+                } else if (device.role === 'Internal') {
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.font = 'bold 10px Inter';
+                    ctx.fillText('Internal', device.x, device.y - 38);
+                }
+
+                // Area 标记
+                ctx.fillStyle = device.color;
+                ctx.font = 'bold 11px Inter';
+                ctx.fillText(`Area ${device.area}`, device.x, device.y + 62);
+
+                // 路由指示器
+                if (hasRoutes) {
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath(); ctx.arc(device.x + 22, device.y - 22, 6, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+        }
+
+        function drawConnections() {
+            connections.forEach(conn => {
+                // 跳过隐藏的连接
+                if (conn.hidden) return;
+                
+                const d1 = devices[conn.from], d2 = devices[conn.to];
+
+                if (conn.type === 'vlink') {
+                    // VLink 样式 - 橙色虚线 + 发光效果（骨干区域逻辑扩展）
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 5;
+                    ctx.setLineDash([12, 6]);
+                    ctx.lineDashOffset = -(state.time * 30) % 18;
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // VLink 高亮发光效果
+                    ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+                    ctx.lineWidth = 14;
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+
+                    // VLink 标签
+                    const mx = (d1.x + d2.x) / 2, my = (d1.y + d2.y) / 2;
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
+                    ctx.beginPath(); ctx.roundRect(mx - 40, my - 11, 80, 22, 5); ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('VLink 骨干', mx, my);
+
+                    devices[conn.from].pulse = 1;
+                    devices[conn.to].pulse = 1;
+                } else if (conn.type === 'ospf') {
+                    // OSPF 连接样式 - 根据 Area 区分
+                    let lineWidth = 3;
+                    let isDashed = false;
+                    let strokeColor = '#64748b';
+
+                    if (conn.label === 'Area 0') {
+                        strokeColor = '#3b82f6';
+                        lineWidth = 5;
+                        isDashed = true;
+                    } else if (conn.label === 'Area 1') {
+                        strokeColor = '#8b5cf6';
+                        lineWidth = 3;
+                        isDashed = true;
+                    } else if (conn.label === 'Area 2') {
+                        strokeColor = '#ec4899';
+                        lineWidth = 3;
+                        isDashed = true;
+                    } else if (conn.label === 'Area 3') {
+                        strokeColor = '#10b981';
+                        lineWidth = 3;
+                        isDashed = true;
+                    }
+
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth;
+
+                    if (isDashed) {
+                        ctx.setLineDash([10, 5]);
+                        ctx.lineDashOffset = -(state.time * 30) % 15;
+                    } else {
+                        ctx.setLineDash([]);
+                    }
+
+                    // VLink 物理路径检测
+                    const isVLinkPath = (conn.from === 6 && conn.to === 5) || (conn.from === 5 && conn.to === 1);
+                    if (isVLinkPath) {
+                        ctx.setLineDash([4, 4]);
+                    }
+
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // 连接标签（所有OSPF连接都显示标签）
+                    const mx = (d1.x + d2.x) / 2, my = (d1.y + d2.y) / 2;
+                    ctx.fillStyle = strokeColor + '40';
+                    ctx.beginPath(); ctx.roundRect(mx - 28, my - 11, 56, 22, 5); ctx.fill();
+                    ctx.fillStyle = strokeColor;
+                    ctx.font = 'bold 10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(conn.label, mx, my);
+                } else {
+                    // 以太网连接 - 灰色点线
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([10, 5]);
+                    ctx.lineDashOffset = -(state.time * 30) % 15;
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    const mx = (d1.x + d2.x) / 2, my = (d1.y + d2.y) / 2;
+                    ctx.fillStyle = 'rgba(148, 163, 184, 0.3)';
+                    ctx.beginPath(); ctx.roundRect(mx - 18, my - 8, 36, 16, 3); ctx.fill();
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '8px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(conn.label, mx, my);
+                }
+            });
+            
+            // 绘制高亮路径
+            if (state.highlightPath && state.highlightPath.length > 1) {
+                state.pathAnimationProgress += 0.016;
+                if (state.pathAnimationProgress > 1) state.pathAnimationProgress = 1;
+                
+                const pathLength = state.highlightPath.length - 1;
+                const currentSegment = Math.floor(state.pathAnimationProgress * pathLength);
+                const segmentProgress = (state.pathAnimationProgress * pathLength) - currentSegment;
+                
+                // 绘制已完成的路径段
+                for (let i = 0; i < currentSegment; i++) {
+                    const d1 = devices[state.highlightPath[i]];
+                    const d2 = devices[state.highlightPath[i + 1]];
+                    
+                    // 高亮路径样式
+                    const glow = ctx.createLinearGradient(d1.x, d1.y, d2.x, d2.y);
+                    glow.addColorStop(0, '#fbbf2430');
+                    glow.addColorStop(0.5, '#fbbf24ff');
+                    glow.addColorStop(1, '#fbbf2430');
+                    ctx.strokeStyle = glow;
+                    ctx.lineWidth = 8;
+                    ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(d2.x, d2.y); ctx.stroke();
+                    
+                    // 路径发光效果
+                    const glow2 = ctx.createRadialGradient((d1.x + d2.x) / 2, (d1.y + d2.y) / 2, 0, (d1.x + d2.x) / 2, (d1.y + d2.y) / 2, 50);
+                    glow2.addColorStop(0, '#fbbf2480');
+                    glow2.addColorStop(1, 'transparent');
+                    ctx.fillStyle = glow2;
+                    ctx.beginPath(); ctx.arc((d1.x + d2.x) / 2, (d1.y + d2.y) / 2, 50, 0, Math.PI * 2); ctx.fill();
+                }
+                
+                // 绘制当前路径段
+                if (currentSegment < pathLength) {
+                    const d1 = devices[state.highlightPath[currentSegment]];
+                    const d2 = devices[state.highlightPath[currentSegment + 1]];
+                    
+                    const x = d1.x + (d2.x - d1.x) * segmentProgress;
+                    const y = d1.y + (d2.y - d1.y) * segmentProgress;
+                    
+                    // 高亮路径样式
+                    const glow = ctx.createLinearGradient(d1.x, d1.y, x, y);
+                    glow.addColorStop(0, '#fbbf2430');
+                    glow.addColorStop(0.5, '#fbbf24ff');
+                    glow.addColorStop(1, '#fbbf2430');
+                    ctx.strokeStyle = glow;
+                    ctx.lineWidth = 8;
+                    ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.moveTo(d1.x, d1.y); ctx.lineTo(x, y); ctx.stroke();
+                    
+                    // 路径发光效果
+                    const glow2 = ctx.createRadialGradient(x, y, 0, x, y, 30);
+                    glow2.addColorStop(0, '#fbbf24ff');
+                    glow2.addColorStop(1, 'transparent');
+                    ctx.fillStyle = glow2;
+                    ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.fill();
+                    
+                    // 路径终点标记
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.stroke();
+                }
+            }
+        }
+
+        function drawAreas() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            const cx = w / 2, cy = h / 2;
+
+            // Area 0 (骨干区域) - 中心椭圆
+            ctx.beginPath();
+            ctx.ellipse(cx - 80, cy - 20, 240, 180, 0, 0, Math.PI * 2);
+            const grad0 = ctx.createRadialGradient(cx - 80, cy - 20, 0, cx - 80, cy - 20, 200);
+            grad0.addColorStop(0, 'rgba(59, 130, 246, 0.15)');
+            grad0.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad0;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Area 1 (非骨干区域) - 左上角
+            ctx.beginPath();
+            ctx.ellipse(cx - 430, cy - 220, 160, 130, 0, 0, Math.PI * 2);
+            const grad1 = ctx.createRadialGradient(cx - 430, cy - 220, 0, cx - 430, cy - 220, 130);
+            grad1.addColorStop(0, 'rgba(139, 92, 246, 0.12)');
+            grad1.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad1;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Area 2 (Transit Area) - 右方椭圆
+            ctx.beginPath();
+            ctx.ellipse(cx + 220, cy + 220, 180, 120, 0, 0, Math.PI * 2);
+            const grad2 = ctx.createRadialGradient(cx + 220, cy + 220, 0, cx + 220, cy + 220, 120);
+            grad2.addColorStop(0, 'rgba(236, 72, 153, 0.12)');
+            grad2.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad2;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(236, 72, 153, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Area 3 (独立区域) - 右方椭圆
+            ctx.beginPath();
+            ctx.ellipse(cx + 480, cy + 100, 120, 90, 0, 0, Math.PI * 2);
+            const grad3 = ctx.createRadialGradient(cx + 480, cy + 100, 0, cx + 480, cy + 100, 90);
+            grad3.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+            grad3.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad3;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Area labels
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'; ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+            ctx.fillText('Area 0 (骨干)', cx - 80, cy + 190);
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.9)';
+            ctx.fillText('Area 1', cx - 430, cy - 50);
+            ctx.fillStyle = 'rgba(236, 72, 153, 0.9)';
+            ctx.fillText('Area 2 (Transit)', cx + 220, cy + 360);
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
+            ctx.fillText('Area 3', cx + 480, cy + 180);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+            state.time += 0.016;
+            updateDevicePositions();
+            state.particles.forEach(p => { p.update(); p.draw(); });
+            drawAreas();
+            drawConnections();
+            devices.forEach(d => drawDevice(d));
+            state.packets = state.packets.filter(p => !p.completed);
+            state.packets.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(render);
+        }
+
+        function generateTimeline() {
+            const timeline = document.getElementById('timeline-list');
+            let html = '';
+            steps.forEach((step, i) => {
+                let cls = 'timeline-item';
+                if (i < state.currentStep) cls += ' completed';
+                if (i === state.currentStep) cls += ' active';
+                html += `
+                    <div class="${cls}" onclick="goToStep(${i})">
+                        <div class="timeline-step-num">${String(i + 1).padStart(2, '0')}</div>
+                        <div class="timeline-step-title">${step.title}</div>
+                    </div>
+                `;
+            });
+            timeline.innerHTML = html;
+            
+            // 滚动到当前步骤
+            const activeItem = timeline.querySelector('.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            }
+        }
+
+        function updateUI() {
+            const step = steps[state.currentStep];
+            
+            // 执行步骤的setup函数（如果有）
+            if (step.setup && typeof step.setup === 'function') {
+                step.setup();
+            }
+            
+            document.getElementById('step-display').textContent = `${String(state.currentStep + 1).padStart(2, '0')} / ${steps.length}`;
+            document.getElementById('info-icon').textContent = step.icon;
+            document.getElementById('info-title').textContent = step.title;
+            document.getElementById('info-content').innerHTML = step.danmaku;
+            
+            state.routes = step.routes;
+            updateRouteTable();
+            
+            if (step.packets.length > 0) {
+                        state.packets = [];
+                        state.packetLog = [];
+                        state.allPacketsCompleted = false;
+                        
+                        // 邻居建立步骤：不同邻居同步发送，同一邻居顺序发送
+                        const neighborGroups = {};
+                        step.packets.forEach((p, i) => {
+                            const key = `${p.from}-${p.to}`;
+                            if (!neighborGroups[key]) neighborGroups[key] = [];
+                            neighborGroups[key].push(p);
+                        });
+                        
+                        // 检查是否是ping测试步骤
+                        const isPingStep = step.packets && step.packets.some(p => p.type === 'ping');
+                        
+                        // 检查是否是VLink路由传递步骤
+                        const isVLinkRouteStep = step.title && step.title.includes('VLink 路由传递');
+                        
+                        if (isPingStep || isVLinkRouteStep) {
+                            // 对于ping步骤和VLink路由传递步骤，按顺序发送所有数据包
+                            let currentPacketIndex = 0;
+                            function sendNextPacket() {
+                                if (currentPacketIndex >= step.packets.length) {
+                                    state.allPacketsCompleted = true;
+                                    return;
+                                }
+                                
+                                const p = step.packets[currentPacketIndex];
+                                const packet = new Packet(p.type, p.from, p.to, currentPacketIndex * 500, p.detail);
+                                state.packets.push(packet);
+                                state.packetLog.push({ type: p.type, from: devices[p.from].name, to: devices[p.to].name, detail: p.detail });
+                                
+                                const checkPacketComplete = setInterval(() => {
+                                    if (packet.completed) {
+                                        clearInterval(checkPacketComplete);
+                                        currentPacketIndex++;
+                                        setTimeout(sendNextPacket, 300);
+                                    }
+                                }, 50);
+                            }
+                            sendNextPacket();
+                        } else {
+                            // 对于其他步骤，按邻居分组顺序发送
+                            let completedGroups = 0;
+                            const totalGroups = Object.values(neighborGroups).length;
+                            
+                            Object.values(neighborGroups).forEach((group, groupIndex) => {
+                                let currentPacketIndex = 0;
+                                function sendNextPacket() {
+                                    if (currentPacketIndex >= group.length) {
+                                        completedGroups++;
+                                        if (completedGroups === totalGroups) {
+                                            state.allPacketsCompleted = true;
+                                        }
+                                        return;
+                                    }
+                                    
+                                    const p = group[currentPacketIndex];
+                                    const packet = new Packet(p.type, p.from, p.to, groupIndex * 500 + currentPacketIndex * 200, p.detail);
+                                    state.packets.push(packet);
+                                    state.packetLog.push({ type: p.type, from: devices[p.from].name, to: devices[p.to].name, detail: p.detail });
+                                    
+                                    const checkPacketComplete = setInterval(() => {
+                                        if (packet.completed) {
+                                            clearInterval(checkPacketComplete);
+                                            currentPacketIndex++;
+                                            setTimeout(sendNextPacket, 200);
+                                        }
+                                    }, 50);
+                                }
+                                sendNextPacket();
+                            });
+                        }
+                    } else {
+                        state.allPacketsCompleted = true;
+                    }
+            
+            updatePacketLog();
+            generateTimeline();
+            
+            const playBtn = document.getElementById('play-btn');
+            if (state.currentStep >= steps.length - 1) {
+                playBtn.disabled = true;
+                document.getElementById('play-text').textContent = '完成';
+                document.getElementById('play-icon').textContent = '✓';
+            } else {
+                playBtn.disabled = false;
+                document.getElementById('play-text').textContent = state.isPlaying ? '暂停' : '播放';
+                document.getElementById('play-icon').textContent = state.isPlaying ? '⏸' : '▶';
+            }
+        }
+
+        function updateRouteTable() {
+            const tbody = document.getElementById('route-table-body');
+            const routes = state.routes[state.currentRouteTable];
+            
+            if (routes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-tertiary); font-size: 14px;">暂无路由</td></tr>';
+            } else {
+                let html = '';
+                routes.forEach(route => {
+                    // 根据前缀和下一跳计算接口
+                    let interfaceName = '';
+                    if (route.nexthop === '直连') {
+                        // 直连路由的接口
+                        if (route.prefix.startsWith('10.0.0.0/30')) interfaceName = 'G0/0';
+                        else if (route.prefix.startsWith('10.0.1.0/30')) interfaceName = 'G0/1';
+                        else if (route.prefix.startsWith('10.0.2.0/30')) interfaceName = 'G0/2';
+                        else if (route.prefix.startsWith('10.1.0.0/30')) interfaceName = 'G0/0';
+                        else if (route.prefix.startsWith('10.1.1.0/30')) interfaceName = 'G0/1';
+                        else if (route.prefix.startsWith('10.2.1.0/30')) interfaceName = 'G0/0';
+                        else if (route.prefix.startsWith('10.2.2.0/30')) interfaceName = 'G0/1';
+                        else if (route.prefix.startsWith('10.3.0.0/30')) interfaceName = 'G0/0';
+                        else if (route.prefix.startsWith('192.168.0.0/24')) interfaceName = 'G1/0';
+                        else if (route.prefix.startsWith('192.168.1.0/24')) interfaceName = 'G1/0';
+                        else if (route.prefix.startsWith('192.168.2.0/24')) interfaceName = 'G1/0';
+                        else if (route.prefix.startsWith('192.168.3.0/24')) interfaceName = 'G1/0';
+                    } else {
+                        // 非直连路由的接口
+                        if (route.nexthop.startsWith('10.0.0.')) interfaceName = 'G0/0';
+                        else if (route.nexthop.startsWith('10.0.1.')) interfaceName = 'G0/1';
+                        else if (route.nexthop.startsWith('10.0.2.')) interfaceName = 'G0/2';
+                        else if (route.nexthop.startsWith('10.1.0.')) interfaceName = 'G0/0';
+                        else if (route.nexthop.startsWith('10.1.1.')) interfaceName = 'G0/1';
+                        else if (route.nexthop.startsWith('10.2.1.')) interfaceName = 'G0/0';
+                        else if (route.nexthop.startsWith('10.2.2.')) interfaceName = 'G0/1';
+                        else if (route.nexthop.startsWith('10.3.0.')) interfaceName = 'G0/0';
+                    }
+                    
+                    html += `
+                        <tr class="new-route">
+                            <td class="route-prefix">${route.prefix}</td>
+                            <td class="route-nexthop">${route.nexthop}</td>
+                            <td class="route-interface">${interfaceName}</td>
+                            <td class="route-area">${route.area}</td>
+                            <td class="route-type">${route.type}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+        }
+
+        function updatePacketLog() {
+            const logList = document.getElementById('packet-log-list');
+            if (state.packetLog.length === 0) {
+                logList.innerHTML = '<div class="packet-log-item"><div class="packet-log-dot" style="background:#64748b"></div><div>暂无报文</div></div>';
+            } else {
+                let html = '';
+                state.packetLog.forEach(log => {
+                    let color = '#3b82f6';
+                    if (log.type === 'ping') color = '#10b981';
+                    else if (log.type === 'lsack') color = '#f59e0b';
+                    html += `
+                        <div class="packet-log-item">
+                            <div class="packet-log-dot" style="background: ${color}"></div>
+                            <div class="packet-log-text">${log.detail}</div>
+                        </div>
+                    `;
+                });
+                logList.innerHTML = html;
+            }
+        }
+
+        function goToStep(i) {
+            if (i >= 0 && i < steps.length) {
+                state.currentStep = i;
+                state.packets = [];
+                state.packetLog = [];
+                updateUI();
+            }
+        }
+
+        function nextStep() {
+            if (state.currentStep < steps.length - 1) {
+                goToStep(state.currentStep + 1);
+            }
+        }
+
+        function togglePlay() {
+            if (state.isPlaying) {
+                clearInterval(state.playInterval);
+                state.isPlaying = false;
+            } else {
+                state.isPlaying = true;
+                state.playInterval = setInterval(() => {
+                    if (state.currentStep < steps.length - 1) {
+                        // 检查当前步骤是否有数据包需要传输
+                        const currentStep = steps[state.currentStep];
+                        if (currentStep.packets && currentStep.packets.length > 0) {
+                            // 如果有数据包，等待所有数据包完成
+                            if (state.allPacketsCompleted) {
+                                nextStep();
+                            }
+                        } else {
+                            // 如果没有数据包，直接切换到下一步
+                            nextStep();
+                        }
+                    } else {
+                        clearInterval(state.playInterval);
+                        state.isPlaying = false;
+                    }
+                }, 50); // 每50ms检查一次
+            }
+            updateUI();
+        }
+
+        function resetAnimation() {
+            state.currentStep = 0;
+            state.isPlaying = false;
+            clearInterval(state.playInterval);
+            state.packets = [];
+            state.packetLog = [];
+            // 重置VLink隐藏状态
+            connections.find(c => c.type === 'vlink').hidden = true;
+            updateUI();
+        }
+
+        function switchRouteTable(router) {
+            state.currentRouteTable = router;
+            document.querySelectorAll('.route-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`tab-${router}`).classList.add('active');
+            updateRouteTable();
+        }
+
+        // 初始化
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 左右方向键切换步骤
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                if (state.currentStep > 0) {
+                    goToStep(state.currentStep - 1);
+                }
+            } else if (e.key === 'ArrowRight') {
+                if (state.currentStep < steps.length - 1) {
+                    goToStep(state.currentStep + 1);
+                }
+            }
+        });
+        
+        for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+            state.particles.push(new Particle());
+        }
+        
+        render();
+        updateUI();
+    </script>
+</body>
+</html>
