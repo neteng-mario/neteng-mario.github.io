@@ -143,8 +143,18 @@
             color: #000;
         }
 
+        .category-btn.security.active {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
         .category-btn.tool.active {
             background: var(--accent-orange);
+            color: #000;
+        }
+
+        .category-btn.ops.active {
+            background: var(--accent-green);
             color: #000;
         }
 
@@ -176,7 +186,40 @@
             font-size: 16px;
         }
 
-        #ospf, #bgp, #tools {
+        .featured-section {
+            margin: 0 0 56px;
+        }
+
+        .featured-section .section-title {
+            margin-bottom: 24px;
+        }
+
+        .featured-card {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 24px;
+            align-items: center;
+            padding: 34px;
+            border-color: rgba(48, 209, 88, 0.32);
+            background:
+                linear-gradient(135deg, rgba(48, 209, 88, 0.12), rgba(41, 151, 255, 0.07)),
+                var(--bg-card);
+        }
+
+        .featured-card .project-icon {
+            margin-bottom: 0;
+        }
+
+        .featured-copy h3 {
+            margin-bottom: 8px;
+        }
+
+        .featured-copy p {
+            margin-bottom: 16px;
+            max-width: 760px;
+        }
+
+        #ospf, #bgp, #security, #tools, #ops-tools {
             animation: fadeIn 0.4s ease-out;
         }
 
@@ -312,6 +355,7 @@
         .project-icon.purple { background: linear-gradient(135deg, rgba(191, 90, 242, 0.2), rgba(191, 90, 242, 0.05)); }
         .project-icon.blue { background: linear-gradient(135deg, rgba(41, 151, 255, 0.2), rgba(41, 151, 255, 0.05)); }
         .project-icon.orange { background: linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 159, 10, 0.05)); }
+        .project-icon.red { background: linear-gradient(135deg, rgba(255, 69, 58, 0.2), rgba(255, 69, 58, 0.05)); }
 
         .project-card h3 {
             font-size: 22px;
@@ -344,6 +388,8 @@
         .tag.protocol { background: rgba(41, 151, 255, 0.12); color: var(--accent-blue); }
         .tag.tool { background: rgba(41, 151, 255, 0.12); color: var(--accent-blue); }
         .tag.ebook { background: rgba(255, 159, 10, 0.12); color: var(--accent-orange); }
+        .tag.ai { background: rgba(48, 209, 88, 0.12); color: var(--accent-green); }
+        .tag.download { background: rgba(191, 90, 242, 0.12); color: var(--accent-purple); }
 
         .features {
             display: grid;
@@ -446,6 +492,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .featured-card {
+                grid-template-columns: 1fr;
+            }
+
             .stats {
                 gap: 24px;
             }
@@ -469,9 +519,30 @@
             </p>
         </header>
 
+        <section class="featured-section">
+            <div class="section-title">
+                <h2><span class="icon">🤖</span> 首页推荐</h2>
+                <p>面向网工和运维的 AI 终端工具，支持下载和快速了解功能。</p>
+            </div>
+            <a href="tools/ai-shell.html" class="project-card featured-card">
+                <div class="project-icon green">🤖</div>
+                <div class="featured-copy">
+                    <h3>AI Shell</h3>
+                    <p>集成 SSH、Telnet、串口、SFTP 文件传输和 AI 排障分析，适合服务器维护、网络设备调试和日常故障排查。</p>
+                    <div class="project-tags">
+                        <span class="tag ai">AI 排障</span>
+                        <span class="tag tool">SSH / Telnet / 串口</span>
+                        <span class="tag download">安装包下载</span>
+                    </div>
+                </div>
+                <div class="card-arrow">→</div>
+            </a>
+        </section>
+
         <nav class="category-nav">
             <a href="#ospf" class="category-btn ospf active" onclick="switchCategory('ospf')">🌿 OSPF</a>
             <a href="#bgp" class="category-btn bgp" onclick="switchCategory('bgp')">🔴 BGP</a>
+            <a href="#security" class="category-btn security" onclick="switchCategory('security')">🔒 网络安全</a>
             <a href="#tools" class="category-btn tool" onclick="switchCategory('tools')">📚 技术文档</a>
             <a href="#ops-tools" class="category-btn ops" onclick="switchCategory('ops-tools')">🔧 运维工具</a>
         </nav>
@@ -542,6 +613,27 @@
             </div>
         </section>
 
+        <section id="security">
+            <div class="section-title">
+                <h2><span class="icon">🔒</span> 网络安全</h2>
+                <p>网络安全演示，包括WiFi密码破解、钓鱼攻击等</p>
+            </div>
+
+            <div class="projects-grid">
+                <a href="security/wifi-hacking.html" class="project-card">
+                    <div class="project-icon red" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));">🔓</div>
+                    <h3>WiFi 密码破解</h3>
+                    <p>模拟WiFi密码破解过程，包括网络扫描、握手包捕获、字典攻击等步骤</p>
+                    <div class="project-tags">
+                        <span class="tag protocol">WiFi</span>
+                        <span class="tag protocol">密码破解</span>
+                        <span class="tag protocol">网络安全</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+            </div>
+        </section>
+
         <section id="tools">
             <div class="section-title">
                 <h2><span class="icon">📚</span> 技术文档</h2>
@@ -594,6 +686,18 @@
             </div>
 
             <div class="projects-grid">
+                <a href="switching/switch-loop.html" class="project-card">
+                    <div class="project-icon orange">🔁</div>
+                    <h3>交换机环路故障与排除</h3>
+                    <p>演示误接网线导致二层环路、广播风暴、MAC 地址漂移、端口定位、隔离恢复和防环配置的完整排障过程。</p>
+                    <div class="project-tags">
+                        <span class="tag tool">交换网络</span>
+                        <span class="tag tool">广播风暴</span>
+                        <span class="tag tool">STP</span>
+                    </div>
+                    <div class="card-arrow">→</div>
+                </a>
+
                 <a href="https://mobaxterm.mobatek.net/" target="_blank" class="project-card">
                     <div class="project-icon green" style="background: transparent; display: flex; align-items: center; justify-content: center;">
                         <img src="assets/icons/Mobaxterm.png" alt="MobaXterm" style="width: 32px; height: 32px; object-fit: contain;">
@@ -667,6 +771,8 @@
     </div>
 
     <script>
+        const sections = ['ospf', 'bgp', 'security', 'tools', 'ops-tools'];
+
         function switchCategory(category) {
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -675,7 +781,6 @@
                 }
             });
 
-            const sections = ['ospf', 'bgp', 'tools', 'ops-tools'];
             sections.forEach(id => {
                 const section = document.getElementById(id);
                 if (id === category) {
@@ -689,7 +794,8 @@
             });
         }
 
-        switchCategory('ospf');
+        const initialCategory = window.location.hash.replace('#', '');
+        switchCategory(sections.includes(initialCategory) ? initialCategory : 'ospf');
     </script>
 </body>
 </html>

@@ -32,6 +32,10 @@ donghua/
 ├── docs/                    # 手册文档
 │   ├── ospf-manual.html    # OSPF 协议手册
 │   └── bgp-manual.html     # BGP 协议手册
+├── tools/                   # 工具介绍页
+│   └── ai-shell.html        # AI Shell 介绍与下载页
+├── downloads/               # 可下载安装包
+│   └── AI-Shell-1.0.0-Setup.exe
 └── 手册/                    # PDF 资料
     └── 网工入门・8 个排障必备命令 图文速查手册 (1) (1).pdf
 ```
@@ -172,7 +176,10 @@ drawer.drawPacket(...);        // 绘制数据包
 
 ## 首页导航
 
-首页 (`index.html`) 包含两个分类：
+首页 (`index.html`) 顶部优先展示 AI Shell 推荐入口，下面是资料分类导航：
+
+### 首页推荐
+- AI Shell 介绍页与 Windows 安装包下载
 
 ### 协议演示 (protocol)
 - OSPF 协议动画
@@ -182,6 +189,10 @@ drawer.drawPacket(...);        // 绘制数据包
 - 排障命令速查手册
 - BGP 协议手册
 - OSPF 协议手册
+
+### 运维工具 (ops-tools)
+- 交换机环路故障与排除
+- MobaXterm、Wireshark、PuTTY、Nmap 等工具链接
 
 ### 修改首页
 

@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi 安全演示 - 授权实验室流程</title>
+    <style>
+        :root {
+            --bg: #050816;
+            --panel: rgba(15, 23, 42, 0.86);
+            --panel-soft: rgba(30, 41, 59, 0.64);
+            --line: rgba(148, 163, 184, 0.18);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --faint: #64748b;
+            --blue: #38bdf8;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --purple: #a78bfa;
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 24% 20%, rgba(56, 189, 248, 0.16), transparent 32%),
+                radial-gradient(circle at 78% 72%, rgba(239, 68, 68, 0.12), transparent 34%),
+                linear-gradient(135deg, #030712 0%, #0f172a 54%, #09090b 100%);
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .app {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(15, 23, 42, 0.78);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(14px);
+        }
+
+        .title h1 {
+            font-size: 22px;
+            line-height: 1.1;
+            letter-spacing: 0;
+        }
+
+        .title p {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .chain-summary {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            color: var(--faint);
+            font-size: 12px;
+        }
+
+        .chain-summary span {
+            padding: 4px 7px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 999px;
+            background: rgba(2, 6, 23, 0.38);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .counter {
+            min-width: 92px;
+            padding: 8px 10px;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            border-radius: var(--radius);
+            background: rgba(56, 189, 248, 0.1);
+            text-align: center;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-weight: 700;
+            color: var(--blue);
+        }
+
+        .btn {
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.32);
+            transform: translateY(-1px);
+        }
+
+        .btn.primary {
+            border-color: rgba(56, 189, 248, 0.42);
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(37, 99, 235, 0.88));
+            color: #00111f;
+            font-weight: 800;
+        }
+
+        .btn.playing {
+            border-color: rgba(34, 197, 94, 0.44);
+            background: rgba(34, 197, 94, 0.14);
+            color: #bbf7d0;
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
+        .workspace {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 10px;
+        }
+
+        .stage {
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            gap: 10px;
+        }
+
+        .canvas-shell {
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background:
+                linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                rgba(2, 6, 23, 0.78);
+            background-size: 40px 40px;
+            box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.5);
+        }
+
+        #scene {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .canvas-caption {
+            position: absolute;
+            left: 16px;
+            bottom: 14px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            pointer-events: none;
+        }
+
+        .chip {
+            padding: 6px 9px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(2, 6, 23, 0.72);
+            color: var(--muted);
+            font-size: 12px;
+            font-family: "JetBrains Mono", Consolas, monospace;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(84px, 1fr));
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(15, 23, 42, 0.76);
+            overflow-x: auto;
+        }
+
+        .step {
+            min-width: 84px;
+            min-height: 86px;
+            padding: 9px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .step:hover {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .step.active {
+            border-color: var(--blue);
+            background: rgba(56, 189, 248, 0.13);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.16), 0 12px 26px rgba(0, 0, 0, 0.24);
+            transform: translateY(-1px);
+            color: var(--text);
+        }
+
+        .step.done {
+            border-color: rgba(34, 197, 94, 0.32);
+            background: rgba(34, 197, 94, 0.08);
+        }
+
+        .step-index {
+            display: inline-flex;
+            width: 24px;
+            height: 24px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(148, 163, 184, 0.14);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 800;
+            font-family: "JetBrains Mono", Consolas, monospace;
+        }
+
+        .step.active .step-index {
+            background: var(--blue);
+            color: #04111f;
+        }
+
+        .step.done .step-index {
+            background: var(--green);
+            color: #03120a;
+        }
+
+        .step-name {
+            margin-top: 8px;
+            display: block;
+            font-size: 13px;
+            font-weight: 800;
+            color: inherit;
+        }
+
+        .step-small {
+            margin-top: 4px;
+            display: block;
+            color: var(--faint);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .sidebar {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto auto auto minmax(0, 1fr);
+            gap: 10px;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--panel);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .panel-eyebrow {
+            color: var(--blue);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .panel-title {
+            margin-top: 4px;
+            font-size: 18px;
+            font-weight: 850;
+        }
+
+        .panel-body {
+            padding: 14px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .metric {
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(2, 6, 23, 0.45);
+        }
+
+        .metric-label {
+            color: var(--faint);
+            font-size: 11px;
+        }
+
+        .metric-value {
+            margin-top: 4px;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .section-label {
+            margin: 14px 0 6px;
+            color: var(--faint);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .copy {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .lesson {
+            margin-top: 10px;
+            padding: 10px;
+            border-left: 3px solid var(--green);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            background: rgba(34, 197, 94, 0.08);
+            color: #dcfce7;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 7px;
+        }
+
+        .message-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .message-row {
+            padding: 9px;
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            border-radius: var(--radius);
+            background: rgba(2, 6, 23, 0.38);
+        }
+
+        .message-route {
+            color: var(--blue);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .message-name {
+            margin-top: 5px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 850;
+        }
+
+        .message-desc {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .timeline-row {
+            display: grid;
+            grid-template-columns: 74px 1fr;
+            gap: 8px;
+            align-items: start;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+            background: rgba(2, 6, 23, 0.36);
+        }
+
+        .timecode {
+            color: var(--blue);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .event {
+            color: #dbeafe;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .log {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .log-list {
+            overflow: auto;
+            padding: 12px;
+            display: grid;
+            gap: 7px;
+        }
+
+        .progress {
+            height: 6px;
+            border-radius: 99px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, 0.16);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 12.5%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--blue), var(--amber), var(--green));
+            transition: width 0.25s ease;
+        }
+
+        @media (max-width: 1100px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .canvas-shell {
+                min-height: 520px;
+            }
+
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .topbar {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+
+            .steps {
+                grid-template-columns: repeat(8, 112px);
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <header class="topbar">
+            <div class="title">
+                <h1>WiFi 安全演示流程</h1>
+                <p>安全教学模拟：用“非法设备”的视角演示弱 WiFi 密码为什么危险，每一步都标清楚发生了什么。</p>
+                <div class="chain-summary" aria-label="攻击链总览">
+                    <span>1 发现网络</span>
+                    <span>2 观察握手</span>
+                    <span>3 诱导重连</span>
+                    <span>4 捕获样本</span>
+                    <span>5 离线验证弱密码</span>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="counter" id="counter">01 / 08</div>
+                <button class="btn" id="prevBtn" type="button">上一步</button>
+                <button class="btn primary" id="nextBtn" type="button">下一步</button>
+                <button class="btn" id="playBtn" type="button">自动演示</button>
+                <button class="btn" id="resetBtn" type="button">重置</button>
+            </div>
+        </header>
+
+        <section class="workspace">
+            <div class="stage">
+                <div class="canvas-shell">
+                    <canvas id="scene"></canvas>
+                    <div class="canvas-caption">
+                        <span class="chip">接入点: HomeWiFi</span>
+                        <span class="chip">场景: 安全教学模拟</span>
+                        <span class="chip" id="phaseChip">阶段: 实验环境</span>
+                    </div>
+                </div>
+
+                <nav class="steps" id="steps" aria-label="演示步骤"></nav>
+            </div>
+
+            <aside class="sidebar">
+                <section class="panel">
+                    <div class="panel-head">
+                        <div class="panel-eyebrow" id="phaseLabel">阶段 01</div>
+                        <div class="panel-title" id="stepTitle">实验环境</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="summary-grid">
+                            <div class="metric">
+                                <div class="metric-label">当前目标</div>
+                                <div class="metric-value" id="objectiveMetric">建立演示场景</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">风险等级</div>
+                                <div class="metric-value" id="riskMetric">低</div>
+                            </div>
+                        </div>
+                        <div class="section-label">这一步发生什么</div>
+                        <p class="copy" id="summaryText"></p>
+                        <div class="section-label">画面应该看哪里</div>
+                        <p class="copy" id="visualText"></p>
+                        <div class="section-label">攻击原理（高层）</div>
+                        <p class="copy" id="principleText"></p>
+                        <div class="lesson" id="lessonText"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-head">
+                        <div class="panel-eyebrow">PROGRESS</div>
+                        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="timeline" id="timeline"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-head">
+                        <div class="panel-eyebrow">协议交互</div>
+                        <div class="panel-title">当前报文链</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="message-list" id="messageList"></div>
+                    </div>
+                </section>
+
+                <section class="panel log">
+                    <div class="panel-head">
+                        <div class="panel-eyebrow">EVENT LOG</div>
+                        <div class="panel-title">当前事件</div>
+                    </div>
+                    <div class="log-list" id="logList"></div>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const steps = [
+            {
+                name: '实验环境',
+                small: '先说明角色',
+                phase: '实验环境',
+                objective: '建立演示场景',
+                risk: '低',
+                color: '#38bdf8',
+                summary: '演示用一个非法设备来说明弱 WiFi 密码的风险链路。场景包含一台接入点 HomeWiFi、一台正常客户端和一台非法设备。',
+                visual: '先看三台设备的位置：非法设备在左侧，接入点在上方，客户端在右侧。蓝色无线圆环表示 HomeWiFi 的覆盖范围。',
+                principle: '攻击链的前提不是“直接拿到密码”，而是非法设备先处在无线信号覆盖范围内，能接收到网络存在和客户端连接行为。',
+                lesson: '安全结论：先确认授权边界。任何无线安全测试都必须限定在自有或已授权网络内。',
+                events: ['实验网络 HomeWiFi 已创建', '客户端已连接到接入点', '非法设备出现在无线覆盖范围内'],
+                messages: [
+                    { from: '接入点', to: '客户端', name: '正常连接保持', desc: '客户端已经通过合法方式连接 HomeWiFi。' },
+                    { from: '接入点', to: '周围空间', name: '无线覆盖存在', desc: 'WiFi 信号覆盖到非法设备所在位置。' }
+                ],
+                flows: []
+            },
+            {
+                name: '网络发现',
+                small: '识别目标网络',
+                phase: '网络发现',
+                objective: '发现无线网络',
+                risk: '低',
+                color: '#38bdf8',
+                summary: '非法设备接收到 HomeWiFi 周期性发出的无线信标，因此能知道附近存在这个 WiFi。',
+                visual: '看上方 HomeWiFi 接入点向外扩散的蓝色信标波，左侧非法设备接收到这些公开无线信号后标记“已发现网络”。',
+                principle: '无线接入点会周期性发出管理信息，让附近设备知道“这里有一个网络”。攻击者利用这些公开信号确定目标和信道。',
+                lesson: '安全结论：隐藏 SSID 不是强保护。真正关键的是强密码、WPA2/WPA3 和关闭弱配置。',
+                events: ['扫描到 SSID: HomeWiFi', '信道锁定: 信道 6', '加密类型: WPA2-Personal'],
+                messages: [
+                    { from: '接入点', to: '周围设备', name: 'Beacon 信标', desc: '公开广播网络名称、信道和加密能力。' },
+                    { from: '非法设备', to: '本地记录', name: '接收信号', desc: '非法设备只是接收到无线信号，还没有获得密码。' }
+                ],
+                flows: []
+            },
+            {
+                name: '监听准备',
+                small: '观察数据流',
+                phase: '监听准备',
+                objective: '进入观察状态',
+                risk: '中',
+                color: '#a78bfa',
+                summary: '非法设备切换到监听视角，观察接入点与客户端之间的无线帧。这里是概念演示，不提供攻击操作。',
+                visual: '看非法设备到接入点之间的紫色监听范围，以及客户端到接入点的正常连接线。',
+                principle: '无线通信在空气中传播，附近设备可能观察到帧的存在。加密保护内容，但不会让无线交换本身完全不可见。',
+                lesson: '安全结论：无线通信天然可被附近设备观察到，所以口令强度和协议安全性很重要。',
+                events: ['监听视角已打开', '客户端连接仍保持正常', '等待可用于教学解释的握手事件'],
+                messages: [
+                    { from: '客户端', to: '接入点', name: '正常无线帧', desc: '客户端与 AP 的通信仍按正常流程进行。' },
+                    { from: '非法设备', to: '空中信道', name: '旁路监听', desc: '非法设备在旁边观察帧的存在，不是通信双方之一。' }
+                ],
+                flows: [{ from: 'auditor', to: 'ap', type: 'monitor', label: '监听视角' }]
+            },
+            {
+                name: '正常握手',
+                small: '客户端重新认证',
+                phase: '握手交换',
+                objective: '观察握手交换',
+                risk: '中',
+                color: '#f59e0b',
+                summary: '客户端与接入点进行认证和密钥协商。演示重点是让用户理解“弱密码会让离线验证变得可行”。',
+                visual: '看客户端和接入点之间的橙色双向数据包，表示认证相关交换正在发生。',
+                principle: '握手交换用于证明客户端知道正确密码，但它不直接发送明文密码。风险在于：握手样本可被拿来验证候选密码是否匹配。',
+                lesson: '安全结论：握手本身不是密码明文。风险来自弱密码可被离线猜测验证。',
+                events: ['客户端发起认证交换', '接入点响应认证挑战', '握手数据被用于风险说明'],
+                messages: [
+                    { from: '接入点', to: '客户端', name: '握手 1', desc: 'AP 发起密钥协商。' },
+                    { from: '客户端', to: '接入点', name: '握手 2', desc: '客户端证明自己知道正确口令派生出的密钥。' },
+                    { from: '接入点', to: '客户端', name: '握手 3', desc: 'AP 下发后续密钥材料。' },
+                    { from: '客户端', to: '接入点', name: '握手 4', desc: '客户端确认，连接进入可用状态。' }
+                ],
+                flows: [{ from: 'client', to: 'ap', type: 'handshake', label: '握手交换' }]
+            },
+            {
+                name: '断连诱导',
+                small: '风险概念展示',
+                phase: '诱导重连',
+                objective: '说明重连风险',
+                risk: '高',
+                color: '#ef4444',
+                summary: '这一阶段只做概念化展示：攻击者可能诱导客户端重新连接，从而制造新的握手交换。本页面不提供操作方法。',
+                visual: '看非法设备到客户端的红色提示线，以及客户端连接状态短暂变红。',
+                principle: '如果客户端重新连接，就会再次出现认证握手。攻击者的目的不是在线登录，而是制造一个可观察的握手机会。',
+                lesson: '安全结论：开启管理帧保护、升级设备固件、使用 WPA3 可以降低这类风险。',
+                events: ['概念风险: 客户端被迫重连', '客户端重新寻找接入点', '新的握手交换即将出现'],
+                messages: [
+                    { from: '非法设备', to: '客户端', name: '断连诱导', desc: '概念演示：诱导客户端重新连接，从而制造新的握手机会。' },
+                    { from: '客户端', to: '接入点', name: '重新连接', desc: '客户端重新认证时会再次产生握手交换。' }
+                ],
+                flows: [{ from: 'auditor', to: 'client', type: 'deauth', label: '诱导重连' }]
+            },
+            {
+                name: '握手捕获',
+                small: '获得验证材料',
+                phase: '捕获样本',
+                objective: '捕获握手样本',
+                risk: '高',
+                color: '#f59e0b',
+                summary: '非法设备观察到完整握手样本。它不是密码，但可用于验证候选密码是否正确。',
+                visual: '看接入点和客户端之间的橙色数据包被左侧非法设备“旁路观察”。',
+                principle: '捕获到握手后，攻击者可以离开现场做离线验证。离线阶段不会反复访问路由器，所以路由器不一定能看到大量登录失败。',
+                lesson: '安全结论：强密码会让离线验证成本极高，弱密码则很容易暴露。',
+                events: ['握手样本已观察到', '样本完整性通过演示检查', '进入弱口令风险验证阶段'],
+                messages: [
+                    { from: '客户端', to: '接入点', name: '握手交换', desc: '客户端和 AP 产生完整握手过程。' },
+                    { from: '空中信道', to: '非法设备', name: '样本被观察', desc: '非法设备获得的是握手样本，不是明文密码。' }
+                ],
+                flows: [
+                    { from: 'client', to: 'ap', type: 'handshake', label: '握手交换' },
+                    { from: 'auditor', to: 'ap', type: 'capture', label: '旁路观察' }
+                ]
+            },
+            {
+                name: '弱口令验证',
+                small: '离线风险',
+                phase: '弱口令验证',
+                objective: '验证弱密码风险',
+                risk: '很高',
+                color: '#f59e0b',
+                summary: '演示用弱口令被快速验证成功。这里展示的是风险结果，不展示字典、工具或命令。',
+                visual: '看左侧非法设备周围的橙色计算粒子和右上角的风险仪表，表示离线验证正在推进。',
+                principle: '离线验证会把候选密码和握手样本进行匹配。密码越短、越常见、越像手机号生日，越容易被候选列表命中。',
+                lesson: '安全结论：不要使用 12345678、手机号、生日、公司名等可预测口令。',
+                events: ['候选口令开始离线验证', '弱口令命中概率升高', '演示密码被标记为高风险'],
+                messages: [
+                    { from: '非法设备', to: '本地计算', name: '候选密码验证', desc: '把候选密码与握手样本进行匹配，不需要反复访问 AP。' },
+                    { from: '本地计算', to: '结果', name: '弱口令命中', desc: '短密码或常见密码容易被候选列表猜中。' }
+                ],
+                flows: [{ from: 'auditor', to: 'ap', type: 'crack', label: '离线验证' }]
+            },
+            {
+                name: '防护建议',
+                small: '如何修复',
+                phase: '防护加固',
+                objective: '输出加固动作',
+                risk: '可控',
+                color: '#22c55e',
+                summary: '演示结束。重点不是“怎么攻击”，而是把弱点转成防护动作：强密码、WPA3、管理帧保护、禁用 WPS、定期轮换。',
+                visual: '看所有链路变为绿色，表示风险被转化为加固清单。',
+                principle: '防护的核心是让攻击链断掉：减少可诱导重连的风险，避免弱口令被离线命中，并使用更现代的无线安全配置。',
+                lesson: '安全结论：无线安全最有效的日常动作是使用长随机密码，并启用现代安全配置。',
+                events: ['建议: 使用 14 位以上随机密码', '建议: 禁用 WPS', '建议: 启用 WPA3 或 WPA2 强配置', '建议: 开启管理帧保护'],
+                messages: [
+                    { from: '强密码', to: '离线验证', name: '提高猜测成本', desc: '长随机密码让候选验证几乎不可行。' },
+                    { from: '管理帧保护', to: '诱导重连', name: '阻断风险点', desc: '减少伪造管理帧造成的重连风险。' }
+                ],
+                flows: [
+                    { from: 'client', to: 'ap', type: 'safe', label: '安全连接' },
+                    { from: 'auditor', to: 'ap', type: 'safe', label: '风险收敛' }
+                ]
+            }
+        ];
+
+        const canvas = document.getElementById('scene');
+        const ctx = canvas.getContext('2d');
+        const counter = document.getElementById('counter');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const stepsEl = document.getElementById('steps');
+        const phaseChip = document.getElementById('phaseChip');
+        const phaseLabel = document.getElementById('phaseLabel');
+        const stepTitle = document.getElementById('stepTitle');
+        const objectiveMetric = document.getElementById('objectiveMetric');
+        const riskMetric = document.getElementById('riskMetric');
+        const summaryText = document.getElementById('summaryText');
+        const visualText = document.getElementById('visualText');
+        const principleText = document.getElementById('principleText');
+        const lessonText = document.getElementById('lessonText');
+        const timeline = document.getElementById('timeline');
+        const messageList = document.getElementById('messageList');
+        const logList = document.getElementById('logList');
+        const progressFill = document.getElementById('progressFill');
+
+        let current = 0;
+        let time = 0;
+        let dpr = window.devicePixelRatio || 1;
+        let stepStarted = performance.now();
+        let autoTimer = null;
+        let isPlaying = false;
+
+        const nodes = {
+            auditor: { label: '非法设备', role: '非法设备', symbol: '非法', color: '#ef4444', x: 0, y: 0 },
+            ap: { label: 'HomeWiFi', role: '接入点', symbol: 'AP', color: '#38bdf8', x: 0, y: 0 },
+            client: { label: '客户端', role: '客户端', symbol: '客户', color: '#22c55e', x: 0, y: 0 }
+        };
+
+        function resizeCanvas() {
+            const box = canvas.parentElement.getBoundingClientRect();
+            dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.floor(box.width * dpr));
+            canvas.height = Math.max(1, Math.floor(box.height * dpr));
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function size() {
+            return { w: canvas.width / dpr, h: canvas.height / dpr };
+        }
+
+        function phaseProgress() {
+            return ((performance.now() - stepStarted) % 4200) / 4200;
+        }
+
+        function layoutNodes() {
+            const { w, h } = size();
+            nodes.auditor.x = w * 0.22;
+            nodes.auditor.y = h * 0.58;
+            nodes.ap.x = w * 0.52;
+            nodes.ap.y = h * 0.32;
+            nodes.client.x = w * 0.78;
+            nodes.client.y = h * 0.58;
+
+            if (w < 720) {
+                nodes.auditor.x = w * 0.2;
+                nodes.ap.x = w * 0.5;
+                nodes.client.x = w * 0.8;
+                nodes.ap.y = h * 0.3;
+            }
+        }
+
+        function drawBackground() {
+            const { w, h } = size();
+            const step = steps[current];
+            ctx.clearRect(0, 0, w, h);
+
+            const glow = ctx.createRadialGradient(w * 0.5, h * 0.45, 20, w * 0.5, h * 0.45, Math.max(w, h) * 0.7);
+            glow.addColorStop(0, `${step.color}18`);
+            glow.addColorStop(0.62, 'rgba(15, 23, 42, 0.16)');
+            glow.addColorStop(1, 'rgba(2, 6, 23, 0.82)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.save();
+            ctx.globalAlpha = 0.18;
+            ctx.strokeStyle = '#94a3b8';
+            const spacing = 40;
+            const shift = (time * 10) % spacing;
+            for (let x = -spacing + shift; x < w + spacing; x += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = -spacing + shift; y < h + spacing; y += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawWifiRange() {
+            const ap = nodes.ap;
+            const step = steps[current];
+            for (let i = 1; i <= 4; i += 1) {
+                const radius = 82 + i * 56 + Math.sin(time * 2 + i) * 8;
+                const alpha = Math.max(0.08, 0.32 - i * 0.05);
+                ctx.strokeStyle = `${step.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ap.x, ap.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        function drawBaseLinks() {
+            drawConnection(nodes.client, nodes.ap, current === 4 ? '#ef4444' : '#22c55e', current === 4 ? 0.34 : 0.72, '正常连接');
+            if (current >= 2 && current <= 6) {
+                drawConnection(nodes.auditor, nodes.ap, steps[current].color, 0.48, current === 2 ? '监听视角' : '旁路观察');
+            }
+        }
+
+        function drawConnection(from, to, color, alpha, label) {
+            ctx.save();
+            ctx.strokeStyle = `${color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([9, 7]);
+            ctx.lineDashOffset = -time * 28;
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const mx = (from.x + to.x) / 2;
+            const my = (from.y + to.y) / 2;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.7)';
+            ctx.beginPath();
+            ctx.roundRect(mx - 46, my - 12, 92, 24, 8);
+            ctx.fill();
+            ctx.strokeStyle = `${color}70`;
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.font = '700 11px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, mx, my);
+            ctx.restore();
+        }
+
+        function drawFlows() {
+            const step = steps[current];
+            step.flows.forEach((flow, index) => {
+                const from = nodes[flow.from];
+                const to = nodes[flow.to];
+                const offset = (time * 0.35 + index * 0.28) % 1;
+                drawFlowPacket(from, to, step.color, offset, flow.label, flow.type);
+
+                if (flow.type === 'handshake') {
+                drawFlowPacket(to, from, step.color, (offset + 0.5) % 1, '握手响应', flow.type);
+                }
+            });
+
+            if (current === 6) {
+                drawCrackParticles();
+            }
+        }
+
+        function drawFlowPacket(from, to, color, progress, label, type) {
+            const x = from.x + (to.x - from.x) * progress;
+            const y = from.y + (to.y - from.y) * progress;
+            const pulse = 1 + Math.sin(time * 8) * 0.18;
+
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 18;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, type === 'deauth' ? 9 * pulse : 7 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            if (progress > 0.42 && progress < 0.58) {
+                ctx.fillStyle = color;
+                ctx.font = '700 11px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, y - 18);
+            }
+        }
+
+        function drawCrackParticles() {
+            const n = nodes.auditor;
+            const step = steps[current];
+            for (let i = 0; i < 34; i += 1) {
+                const angle = time * 2.2 + i * 0.74;
+                const radius = 48 + (i % 6) * 12 + Math.sin(time * 3 + i) * 4;
+                const x = n.x + Math.cos(angle) * radius;
+                const y = n.y + Math.sin(angle) * radius;
+                ctx.fillStyle = `${step.color}${Math.floor((0.25 + (i % 5) * 0.1) * 255).toString(16).padStart(2, '0')}`;
+                ctx.beginPath();
+                ctx.arc(x, y, 2 + (i % 3), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawNode(node) {
+            const pulse = 4 + Math.sin(time * 2.2) * 3;
+            const radius = 34;
+            ctx.save();
+            ctx.shadowColor = node.color;
+            ctx.shadowBlur = 28;
+            ctx.fillStyle = node.color;
+            ctx.beginPath();
+            ctx.roundRect(node.x - radius, node.y - radius, radius * 2, radius * 2, 12);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(node.x - radius, node.y - radius, radius * 2, radius * 2, 12);
+            ctx.stroke();
+
+            ctx.strokeStyle = `${node.color}80`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius + 16 + pulse, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 18px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const symbol = node.symbol;
+            ctx.fillText(symbol, node.x, node.y);
+
+            ctx.textBaseline = 'alphabetic';
+            ctx.font = '800 14px Inter, sans-serif';
+            ctx.fillText(node.label, node.x, node.y + 52);
+            ctx.fillStyle = node.color;
+            ctx.font = '700 10px Consolas, monospace';
+            ctx.fillText(node.role, node.x, node.y - 48);
+        }
+
+        function drawHud() {
+            const { w } = size();
+            const step = steps[current];
+            const x = 18;
+            const y = 18;
+            const width = Math.min(420, w - 36);
+
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.76)';
+            ctx.strokeStyle = `${step.color}80`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, 86, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = step.color;
+            ctx.font = '800 12px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`步骤 ${String(current + 1).padStart(2, '0')} / ${step.phase}`, x + 14, y + 24);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '850 22px Inter, sans-serif';
+            ctx.fillText(step.name, x + 14, y + 52);
+
+            ctx.fillStyle = 'rgba(203, 213, 225, 0.82)';
+            ctx.font = '13px Inter, sans-serif';
+            ctx.fillText(step.objective, x + 14, y + 72);
+        }
+
+        function drawProtocolStrip() {
+            const { w } = size();
+            const step = steps[current];
+            if (w < 760 || !step.messages.length) return;
+
+            const width = Math.min(420, w * 0.42);
+            const x = w - width - 18;
+            const y = 18;
+            const rowHeight = 42;
+            const height = 44 + Math.min(step.messages.length, 4) * rowHeight;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.74)';
+            ctx.strokeStyle = `${step.color}68`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = step.color;
+            ctx.font = '800 12px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('当前协议交互', x + 14, y + 24);
+
+            step.messages.slice(0, 4).forEach((message, index) => {
+                const rowY = y + 42 + index * rowHeight;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.045)';
+                ctx.beginPath();
+                ctx.roundRect(x + 10, rowY - 14, width - 20, 32, 8);
+                ctx.fill();
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = '800 12px Inter, sans-serif';
+                ctx.fillText(message.name, x + 20, rowY);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '700 10px Consolas, monospace';
+                ctx.fillText(`${message.from} -> ${message.to}`, x + 20, rowY + 14);
+            });
+            ctx.restore();
+        }
+
+        function drawPhaseEffect() {
+            const p = phaseProgress();
+            const step = steps[current];
+
+            if (current === 1) {
+                drawBeaconBroadcast(p);
+            } else if (current === 2) {
+                drawListeningCone(p);
+            } else if (current === 3) {
+                drawHandshakeSequence(p);
+            } else if (current === 4) {
+                drawReconnectShockwave(p);
+            } else if (current === 5) {
+                drawCaptureSample(p);
+            } else if (current === 6) {
+                drawPasswordWall(p);
+            } else if (current === 7) {
+                drawDefenseShield(p);
+            } else {
+                drawIdlePulse(p);
+            }
+        }
+
+        function drawRadarSweep(origin, color, progress, maxRadius, label) {
+            const radius = 45 + progress * maxRadius;
+            const alpha = 1 - progress;
+            ctx.save();
+            ctx.strokeStyle = `${color}${Math.floor(alpha * 210).toString(16).padStart(2, '0')}`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(origin.x, origin.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const angle = progress * Math.PI * 2;
+            ctx.fillStyle = `${color}22`;
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.arc(origin.x, origin.y, maxRadius, angle - 0.32, angle + 0.32);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = color;
+            ctx.font = '800 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, origin.x + Math.cos(angle) * 86, origin.y + Math.sin(angle) * 86);
+            ctx.restore();
+        }
+
+        function drawDiscoveryLabel(progress) {
+            const ap = nodes.ap;
+            const alpha = Math.min(1, progress * 3);
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(ap.x - 82, ap.y - 92, 164, 48, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '900 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('发现网络', ap.x, ap.y - 72);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '800 13px Inter, sans-serif';
+            ctx.fillText('HomeWiFi  信道 6  WPA2', ap.x, ap.y - 54);
+
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y - 44);
+            ctx.lineTo(ap.x, ap.y - 18);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawBeaconBroadcast(progress) {
+            const ap = nodes.ap;
+            const auditor = nodes.auditor;
+
+            for (let i = 0; i < 4; i += 1) {
+                const local = (progress + i * 0.22) % 1;
+                const radius = 38 + local * 260;
+                const alpha = 1 - local;
+                ctx.strokeStyle = `rgba(56, 189, 248, ${0.58 * alpha})`;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(ap.x, ap.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            const pulse = (Math.sin(progress * Math.PI * 2) + 1) / 2;
+            ctx.save();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${0.38 + pulse * 0.34})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 7]);
+            ctx.lineDashOffset = -time * 24;
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y);
+            ctx.lineTo(auditor.x, auditor.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const angle = Math.atan2(auditor.y - ap.y, auditor.x - ap.x);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.82)';
+            ctx.beginPath();
+            ctx.moveTo(auditor.x - Math.cos(angle) * 36, auditor.y - Math.sin(angle) * 36);
+            ctx.lineTo(auditor.x - Math.cos(angle - 0.45) * 54, auditor.y - Math.sin(angle - 0.45) * 54);
+            ctx.lineTo(auditor.x - Math.cos(angle + 0.45) * 54, auditor.y - Math.sin(angle + 0.45) * 54);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(auditor.x - 88, auditor.y - 96, 176, 52, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '900 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('已接收 WiFi 信号', auditor.x, auditor.y - 74);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '800 13px Inter, sans-serif';
+            ctx.fillText('HomeWiFi  信道 6  WPA2', auditor.x, auditor.y - 55);
+            ctx.restore();
+
+            drawReceiverLock(progress);
+            drawDiscoveryLabel(Math.min(1, progress * 2));
+        }
+
+        function drawReceiverLock(progress) {
+            const auditor = nodes.auditor;
+            const pulse = (Math.sin(progress * Math.PI * 2) + 1) / 2;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${0.5 + pulse * 0.35})`;
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 3; i += 1) {
+                ctx.beginPath();
+                ctx.arc(auditor.x, auditor.y, 48 + i * 14 + pulse * 5, -0.72, 0.72);
+                ctx.stroke();
+            }
+
+            const panelX = auditor.x - 86;
+            const panelY = auditor.y + 76;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.58)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(panelX, panelY, 172, 48, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '700 10px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('接收信号', panelX + 12, panelY + 17);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText('RSSI -42 dBm', panelX + 82, panelY + 17);
+
+            for (let i = 0; i < 5; i += 1) {
+                const height = 7 + i * 4;
+                ctx.fillStyle = i < 4 ? '#38bdf8' : 'rgba(56, 189, 248, 0.28)';
+                ctx.fillRect(panelX + 14 + i * 15, panelY + 36 - height, 9, height);
+            }
+            ctx.restore();
+        }
+
+        function drawListeningCone(progress) {
+            const a = nodes.auditor;
+            const ap = nodes.ap;
+            const c = nodes.client;
+            const sweep = Math.sin(progress * Math.PI * 2) * 18;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(167, 139, 250, 0.16)';
+            ctx.strokeStyle = 'rgba(167, 139, 250, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(ap.x - 16 + sweep, ap.y + 34);
+            ctx.lineTo(c.x - 26 - sweep, c.y - 26);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#a78bfa';
+            ctx.font = '800 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('监听范围', (a.x + ap.x + c.x) / 3, (a.y + ap.y + c.y) / 3 - 18);
+            ctx.restore();
+        }
+
+        function drawHandshakeSequence(progress) {
+            const from = nodes.client;
+            const to = nodes.ap;
+            const labels = ['握手1', '握手2', '握手3', '握手4'];
+
+            labels.forEach((label, index) => {
+                const local = (progress * 1.25 - index * 0.18 + 1) % 1;
+                const forward = index % 2 === 0;
+                const start = forward ? from : to;
+                const end = forward ? to : from;
+                const x = start.x + (end.x - start.x) * local;
+                const y = start.y + (end.y - start.y) * local;
+
+                ctx.save();
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 16;
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.roundRect(x - 15, y - 12, 30, 24, 7);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = '#111827';
+                ctx.font = '900 11px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x, y + 1);
+            });
+        }
+
+        function drawReconnectShockwave(progress) {
+            const a = nodes.auditor;
+            const c = nodes.client;
+            const x = a.x + (c.x - a.x) * progress;
+            const y = a.y + (c.y - a.y) * progress;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(239, 68, 68, ${0.95 - progress * 0.45})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(x, y, 22 + progress * 28, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const midX = (nodes.client.x + nodes.ap.x) / 2;
+            const midY = (nodes.client.y + nodes.ap.y) / 2;
+            ctx.moveTo(midX - 30, midY);
+            ctx.lineTo(midX - 12, midY - 16);
+            ctx.lineTo(midX + 8, midY + 16);
+            ctx.lineTo(midX + 28, midY - 12);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fecaca';
+            ctx.font = '900 13px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('诱导重连', x, y - 34);
+            ctx.restore();
+        }
+
+        function drawCaptureSample(progress) {
+            const start = { x: (nodes.client.x + nodes.ap.x) / 2, y: (nodes.client.y + nodes.ap.y) / 2 };
+            const end = nodes.auditor;
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const x = start.x + (end.x - start.x) * eased;
+            const y = start.y + (end.y - start.y) * eased;
+
+            ctx.save();
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.roundRect(x - 48, y - 18, 96, 36, 9);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.fillStyle = '#111827';
+            ctx.font = '900 12px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('握手样本', x, y);
+
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function drawPasswordWall(progress) {
+            const a = nodes.auditor;
+            const words = ['12345678', 'birthday', 'phone', 'company', 'qwerty888', 'admin2026', 'homewifi', 'weak-pass'];
+
+            ctx.save();
+            ctx.font = '700 12px Consolas, monospace';
+            ctx.textAlign = 'left';
+            words.forEach((word, index) => {
+                const lane = index % 4;
+                const fall = (progress * 220 + index * 35) % 220;
+                const x = a.x - 150 + lane * 86;
+                const y = a.y - 130 + fall;
+                ctx.fillStyle = index === 0 && progress > 0.58 ? '#22c55e' : 'rgba(245, 158, 11, 0.78)';
+                ctx.fillText(word, x, y);
+            });
+
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
+            ctx.beginPath();
+            ctx.roundRect(a.x - 90, a.y + 82, 180, 28, 8);
+            ctx.fill();
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.roundRect(a.x - 84, a.y + 90, Math.min(168, 168 * (progress * 1.25)), 12, 6);
+            ctx.fill();
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '900 11px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(progress > 0.72 ? '弱口令命中' : '离线验证中', a.x, a.y + 128);
+            ctx.restore();
+        }
+
+        function drawDefenseShield(progress) {
+            const ap = nodes.ap;
+            const client = nodes.client;
+            const cx = (ap.x + client.x) / 2;
+            const cy = (ap.y + client.y) / 2;
+            const radius = 118 + Math.sin(progress * Math.PI * 2) * 10;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, Math.PI, 0);
+            ctx.lineTo(cx + radius, cy + 64);
+            ctx.quadraticCurveTo(cx, cy + 118, cx - radius, cy + 64);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#bbf7d0';
+            ctx.font = '900 14px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('强密码 + WPA3 + 管理帧保护', cx, cy + 6);
+            ctx.restore();
+        }
+
+        function drawIdlePulse(progress) {
+            drawRadarSweep(nodes.ap, steps[current].color, progress, 180, '实验');
+        }
+
+        function render() {
+            time += 0.016;
+            layoutNodes();
+            drawBackground();
+            drawWifiRange();
+            drawBaseLinks();
+            drawPhaseEffect();
+            drawFlows();
+            drawNode(nodes.auditor);
+            drawNode(nodes.ap);
+            drawNode(nodes.client);
+            drawHud();
+            drawProtocolStrip();
+            requestAnimationFrame(render);
+        }
+
+        function renderSteps() {
+            stepsEl.innerHTML = steps.map((step, index) => {
+                const classes = ['step'];
+                if (index === current) classes.push('active');
+                if (index < current) classes.push('done');
+                return `
+                    <button class="${classes.join(' ')}" type="button" data-step="${index}">
+                        <span class="step-index">${index + 1}</span>
+                        <span class="step-name">${step.name}</span>
+                        <span class="step-small">${step.small}</span>
+                    </button>
+                `;
+            }).join('');
+
+            stepsEl.querySelectorAll('.step').forEach(button => {
+                button.addEventListener('click', () => {
+                    setStep(Number(button.dataset.step));
+                });
+            });
+        }
+
+        function renderSidebar() {
+            const step = steps[current];
+            counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+            phaseChip.textContent = `阶段: ${step.phase}`;
+            phaseLabel.textContent = `阶段 ${String(current + 1).padStart(2, '0')}`;
+            stepTitle.textContent = step.name;
+            objectiveMetric.textContent = step.objective;
+            riskMetric.textContent = step.risk;
+            summaryText.textContent = step.summary;
+            visualText.textContent = step.visual;
+            principleText.textContent = step.principle;
+            lessonText.textContent = step.lesson;
+            progressFill.style.width = `${((current + 1) / steps.length) * 100}%`;
+            prevBtn.disabled = current === 0;
+            nextBtn.disabled = current === steps.length - 1;
+            playBtn.textContent = isPlaying ? '暂停演示' : '自动演示';
+            playBtn.classList.toggle('playing', isPlaying);
+
+            timeline.innerHTML = steps.map((item, index) => `
+                <div class="timeline-row">
+                    <div class="timecode">${index < current ? '已完成' : index === current ? '当前' : '待播放'}</div>
+                    <div class="event">${index + 1}. ${item.name}</div>
+                </div>
+            `).join('');
+
+            messageList.innerHTML = step.messages.map(message => `
+                <div class="message-row">
+                    <div class="message-route">${message.from} -> ${message.to}</div>
+                    <div class="message-name">${message.name}</div>
+                    <div class="message-desc">${message.desc}</div>
+                </div>
+            `).join('');
+
+            logList.innerHTML = step.events.map((event, index) => `
+                <div class="timeline-row">
+                    <div class="timecode">T+${String(index + 1).padStart(2, '0')}</div>
+                    <div class="event">${event}</div>
+                </div>
+            `).join('');
+        }
+
+        function setStep(index) {
+            current = Math.max(0, Math.min(steps.length - 1, index));
+            stepStarted = performance.now();
+            renderSteps();
+            renderSidebar();
+        }
+
+        function startAutoPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            renderSidebar();
+            autoTimer = window.setInterval(() => {
+                if (current >= steps.length - 1) {
+                    stopAutoPlay();
+                    return;
+                }
+                setStep(current + 1);
+            }, 4200);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            if (autoTimer) {
+                window.clearInterval(autoTimer);
+                autoTimer = null;
+            }
+            renderSidebar();
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(current - 1);
+        });
+        nextBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(current + 1);
+        });
+        playBtn.addEventListener('click', toggleAutoPlay);
+        resetBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(0);
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        renderSteps();
+        renderSidebar();
+        render();
+    </script>
+</body>
+</html>

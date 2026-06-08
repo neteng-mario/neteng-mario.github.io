@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交换机环路故障与排除演示</title>
+    <style>
+        :root {
+            --bg: #050816;
+            --panel: rgba(15, 23, 42, 0.86);
+            --line: rgba(148, 163, 184, 0.18);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --faint: #64748b;
+            --blue: #38bdf8;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --purple: #a78bfa;
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 24% 18%, rgba(56, 189, 248, 0.14), transparent 32%),
+                radial-gradient(circle at 82% 78%, rgba(239, 68, 68, 0.14), transparent 34%),
+                linear-gradient(135deg, #020617 0%, #0f172a 52%, #030712 100%);
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .app {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(15, 23, 42, 0.78);
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(14px);
+        }
+
+        .title h1 {
+            font-size: 22px;
+            line-height: 1.1;
+        }
+
+        .title p {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .chain {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .chain span {
+            padding: 4px 7px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 999px;
+            background: rgba(2, 6, 23, 0.38);
+            color: var(--faint);
+            font-size: 12px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .counter {
+            min-width: 96px;
+            padding: 8px 10px;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            border-radius: var(--radius);
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--blue);
+            text-align: center;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-weight: 800;
+        }
+
+        .btn {
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn.primary {
+            border-color: rgba(56, 189, 248, 0.4);
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.95), rgba(37, 99, 235, 0.9));
+            color: #031525;
+            font-weight: 850;
+        }
+
+        .btn.playing {
+            border-color: rgba(34, 197, 94, 0.42);
+            background: rgba(34, 197, 94, 0.14);
+            color: #bbf7d0;
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
+        .workspace {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 380px;
+            gap: 10px;
+        }
+
+        .main {
+            min-height: 0;
+            min-width: 0;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            gap: 10px;
+        }
+
+        .canvas-shell {
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background:
+                linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                rgba(2, 6, 23, 0.78);
+            background-size: 42px 42px;
+            box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.48);
+        }
+
+        #scene {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .legend {
+            position: absolute;
+            left: 16px;
+            bottom: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .chip {
+            padding: 6px 9px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(2, 6, 23, 0.72);
+            color: var(--muted);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(94px, 1fr));
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(15, 23, 42, 0.76);
+            overflow-x: auto;
+        }
+
+        .step {
+            min-width: 94px;
+            min-height: 84px;
+            padding: 9px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .step:hover {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .step.active {
+            border-color: var(--blue);
+            background: rgba(56, 189, 248, 0.13);
+            color: var(--text);
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.16), 0 12px 26px rgba(0, 0, 0, 0.22);
+        }
+
+        .step.done {
+            border-color: rgba(34, 197, 94, 0.36);
+            background: rgba(34, 197, 94, 0.08);
+        }
+
+        .step-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(148, 163, 184, 0.14);
+            color: var(--text);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 12px;
+            font-weight: 850;
+        }
+
+        .step.active .step-index {
+            background: var(--blue);
+            color: #031525;
+        }
+
+        .step.done .step-index {
+            background: var(--green);
+            color: #03120a;
+        }
+
+        .step-name {
+            display: block;
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 850;
+        }
+
+        .step-small {
+            display: block;
+            margin-top: 4px;
+            color: var(--faint);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .sidebar {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 10px;
+        }
+
+        .panel {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--panel);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+        }
+
+        .panel-head {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .eyebrow {
+            color: var(--blue);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 11px;
+            font-weight: 850;
+        }
+
+        .panel-title {
+            margin-top: 4px;
+            font-size: 19px;
+            font-weight: 900;
+        }
+
+        .panel-body {
+            padding: 14px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .metric {
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(2, 6, 23, 0.42);
+        }
+
+        .metric-label {
+            color: var(--faint);
+            font-size: 11px;
+        }
+
+        .metric-value {
+            margin-top: 4px;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 14px;
+            font-weight: 850;
+        }
+
+        .section-label {
+            margin: 14px 0 6px;
+            color: var(--faint);
+            font-size: 11px;
+            font-weight: 850;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .copy {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.58;
+        }
+
+        .fix {
+            margin-top: 10px;
+            padding: 10px;
+            border-left: 3px solid var(--green);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            background: rgba(34, 197, 94, 0.08);
+            color: #dcfce7;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 7px;
+        }
+
+        .timeline-row {
+            display: grid;
+            grid-template-columns: 74px 1fr;
+            gap: 8px;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+            background: rgba(2, 6, 23, 0.36);
+        }
+
+        .timecode {
+            color: var(--blue);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 11px;
+            font-weight: 850;
+        }
+
+        .event {
+            color: #dbeafe;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .log {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .log-list {
+            overflow: auto;
+            padding: 12px;
+            display: grid;
+            gap: 7px;
+        }
+
+        .progress {
+            height: 6px;
+            border-radius: 99px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, 0.16);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 12.5%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--blue), var(--amber), var(--green));
+            transition: width 0.25s ease;
+        }
+
+        @media (max-width: 1120px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .canvas-shell {
+                min-height: 520px;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .topbar {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+
+            .steps {
+                grid-template-columns: repeat(8, 112px);
+            }
+
+            .metric-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <header class="topbar">
+            <div class="title">
+                <h1>交换机环路故障与排除</h1>
+                <p>从“误接一根网线”开始，观察广播风暴、MAC 地址漂移、端口定位和恢复验证。</p>
+                <div class="chain">
+                    <span>正常拓扑</span>
+                    <span>误接环路</span>
+                    <span>广播风暴</span>
+                    <span>MAC 漂移</span>
+                    <span>定位端口</span>
+                    <span>隔离恢复</span>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="counter" id="counter">01 / 08</div>
+                <button class="btn" id="prevBtn" type="button">上一步</button>
+                <button class="btn primary" id="nextBtn" type="button">下一步</button>
+                <button class="btn" id="playBtn" type="button">自动演示</button>
+                <button class="btn" id="resetBtn" type="button">重置</button>
+            </div>
+        </header>
+
+        <section class="workspace">
+            <div class="main">
+                <div class="canvas-shell">
+                    <canvas id="scene"></canvas>
+                    <div class="legend">
+                        <span class="chip">红色: 广播风暴</span>
+                        <span class="chip">橙色: MAC 漂移</span>
+                        <span class="chip">绿色: 已恢复</span>
+                        <span class="chip" id="phaseChip">阶段: 正常拓扑</span>
+                    </div>
+                </div>
+                <nav class="steps" id="steps" aria-label="演示步骤"></nav>
+            </div>
+
+            <aside class="sidebar">
+                <section class="panel">
+                    <div class="panel-head">
+                        <div class="eyebrow" id="phaseLabel">阶段 01</div>
+                        <div class="panel-title" id="stepTitle">正常拓扑</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="metric-grid">
+                            <div class="metric">
+                                <div class="metric-label">网络状态</div>
+                                <div class="metric-value" id="statusMetric">正常</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">风险等级</div>
+                                <div class="metric-value" id="riskMetric">低</div>
+                            </div>
+                        </div>
+                        <div class="section-label">发生了什么</div>
+                        <p class="copy" id="summaryText"></p>
+                        <div class="section-label">画面看哪里</div>
+                        <p class="copy" id="visualText"></p>
+                        <div class="section-label">排障动作</div>
+                        <p class="copy" id="actionText"></p>
+                        <div class="fix" id="fixText"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-head">
+                        <div class="eyebrow">进度</div>
+                        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="timeline" id="timeline"></div>
+                    </div>
+                </section>
+
+                <section class="panel log">
+                    <div class="panel-head">
+                        <div class="eyebrow">故障日志</div>
+                        <div class="panel-title">当前观察点</div>
+                    </div>
+                    <div class="log-list" id="logList"></div>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const steps = [
+            {
+                name: '正常拓扑',
+                small: 'STP 阻塞冗余链路',
+                status: '正常',
+                risk: '低',
+                color: '#38bdf8',
+                summary: '三台交换机形成三角拓扑。为了避免二层环路，STP 会阻塞其中一条冗余链路。',
+                visual: '看 SW2 到 SW3 之间的链路是虚线阻塞状态，广播帧不会绕圈。',
+                action: '确认 STP 正常启用，记录当前根桥和阻塞端口。',
+                fix: '正常状态下，冗余链路可以存在，但必须有 STP 或等价机制防环。',
+                logs: ['STP 状态: 正常', 'SW2-SW3 端口: Blocking', '广播流量稳定'],
+                storm: 0,
+                blocked: true,
+                isolate: false,
+                recovered: false
+            },
+            {
+                name: '误接网线',
+                small: '人为接出新环路',
+                status: '隐患出现',
+                risk: '中',
+                color: '#f59e0b',
+                summary: '有人把一根网线误接回交换网络，绕过了原本被 STP 控制的链路，新的二层环路形成。',
+                visual: '看右下角出现一条橙色新网线，SW3 又被接回 SW1，形成闭合回路。',
+                action: '排障时先问：最近有没有新增网线、桌面交换机、临时跳线。',
+                fix: '新增接入设备前，应开启 BPDU Guard、Loop Guard 或端口安全策略。',
+                logs: ['检测到新链路', '拓扑出现闭合回路', 'STP 尚未完成收敛'],
+                storm: 0.2,
+                blocked: false,
+                isolate: false,
+                recovered: false
+            },
+            {
+                name: '广播风暴',
+                small: 'ARP 广播开始绕圈',
+                status: '严重异常',
+                risk: '高',
+                color: '#ef4444',
+                summary: 'ARP 广播帧在二层环路中不断复制和转发，交换机端口灯狂闪，链路带宽被广播流量占满。',
+                visual: '看红色广播帧沿三台交换机循环，数量越来越多。',
+                action: '观察交换机端口流量、CPU、广播包速率，确认是否出现广播风暴。',
+                fix: '广播风暴会拖垮同一广播域内的所有主机，应优先隔离疑似环路端口。',
+                logs: ['广播包速率快速升高', '端口指示灯异常闪烁', '用户反馈全网变慢'],
+                storm: 0.85,
+                blocked: false,
+                isolate: false,
+                recovered: false
+            },
+            {
+                name: 'MAC 漂移',
+                small: '同一 MAC 多端口跳变',
+                status: '定位线索',
+                risk: '高',
+                color: '#f59e0b',
+                summary: '同一个源 MAC 地址从不同端口反复出现，交换机 MAC 地址表不断抖动，表现为 MAC Flapping。',
+                visual: '看右侧 MAC 表中同一个 MAC 在 SW1 的 G0/1 和 G0/3 之间跳变。',
+                action: '查看日志中的 MAC Flap、端口流量异常和同 VLAN 广播峰值。',
+                fix: 'MAC 漂移是定位二层环路的关键信号，通常能反推出环路涉及端口。',
+                logs: ['MAC 00:11:22:33:44:55 在端口间漂移', 'SW1 G0/1 与 G0/3 频繁学习同一 MAC', 'ARP 请求重复出现'],
+                storm: 0.95,
+                blocked: false,
+                isolate: false,
+                recovered: false
+            },
+            {
+                name: '定位端口',
+                small: '找到异常链路',
+                status: '排障中',
+                risk: '中',
+                color: '#a78bfa',
+                summary: '根据 MAC 漂移、端口广播速率和链路变化，定位疑似环路端口。',
+                visual: '看 SW1 到 SW3 的橙色误接链路被高亮，表示排障定位目标。',
+                action: '从核心到接入逐层查，优先定位广播流量最高、MAC 漂移最多的端口。',
+                fix: '定位时不要盲目重启全网，先隔离最可疑端口，避免扩大影响。',
+                logs: ['锁定疑似端口: SW1 G0/3', '端口广播速率异常', '邻接设备疑似桌面交换机'],
+                storm: 0.65,
+                blocked: false,
+                isolate: false,
+                recovered: false
+            },
+            {
+                name: '隔离端口',
+                small: 'Shutdown 疑似端口',
+                status: '影响下降',
+                risk: '中',
+                color: '#22c55e',
+                summary: '临时关闭或拔掉疑似环路端口，广播风暴停止，网络开始恢复。',
+                visual: '看误接链路变为灰色断开，红色广播帧逐渐消失。',
+                action: '对疑似端口执行 shutdown 或物理拔线，再观察广播流量是否回落。',
+                fix: '临时恢复后仍需找到误接源头，否则用户可能再次接回。',
+                logs: ['SW1 G0/3 已隔离', '广播速率开始下降', '用户网络逐步恢复'],
+                storm: 0.25,
+                blocked: false,
+                isolate: true,
+                recovered: false
+            },
+            {
+                name: '启用防护',
+                small: 'STP/BPDU/Storm Control',
+                status: '加固中',
+                risk: '低',
+                color: '#22c55e',
+                summary: '恢复业务后配置防护策略，例如 STP、BPDU Guard、Root Guard、Storm Control、端口安全。',
+                visual: '看接入口出现绿色防护盾，表示后续误接会被阻断或限速。',
+                action: '接入口开启 BPDU Guard；广播风暴控制设置阈值；关键链路确认 STP 根桥规划。',
+                fix: '防护目标不是只修一次故障，而是让同类误接下次不会拖垮全网。',
+                logs: ['BPDU Guard 已启用', 'Storm Control 阈值已配置', '端口安全策略已下发'],
+                storm: 0.1,
+                blocked: true,
+                isolate: true,
+                recovered: false
+            },
+            {
+                name: '恢复验证',
+                small: '确认业务恢复',
+                status: '恢复',
+                risk: '低',
+                color: '#22c55e',
+                summary: '检查端口流量、MAC 表稳定性、用户连通性和监控告警，确认故障闭环。',
+                visual: '看链路恢复为绿色稳定状态，广播帧数量回到正常水平。',
+                action: '验证 ping、网关、核心业务访问、广播包速率和 MAC 地址表是否稳定。',
+                fix: '排障闭环：记录故障端口、根因、恢复动作和防复发措施。',
+                logs: ['广播包速率恢复正常', 'MAC 地址表稳定', '业务验证通过'],
+                storm: 0,
+                blocked: true,
+                isolate: true,
+                recovered: true
+            }
+        ];
+
+        const canvas = document.getElementById('scene');
+        const ctx = canvas.getContext('2d');
+        const stepsEl = document.getElementById('steps');
+        const counter = document.getElementById('counter');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const phaseChip = document.getElementById('phaseChip');
+        const phaseLabel = document.getElementById('phaseLabel');
+        const stepTitle = document.getElementById('stepTitle');
+        const statusMetric = document.getElementById('statusMetric');
+        const riskMetric = document.getElementById('riskMetric');
+        const summaryText = document.getElementById('summaryText');
+        const visualText = document.getElementById('visualText');
+        const actionText = document.getElementById('actionText');
+        const fixText = document.getElementById('fixText');
+        const timeline = document.getElementById('timeline');
+        const logList = document.getElementById('logList');
+        const progressFill = document.getElementById('progressFill');
+
+        let current = 0;
+        let time = 0;
+        let dpr = window.devicePixelRatio || 1;
+        let stepStarted = performance.now();
+        let autoTimer = null;
+        let isPlaying = false;
+
+        const switches = {
+            sw1: { name: 'SW1', x: 0, y: 0 },
+            sw2: { name: 'SW2', x: 0, y: 0 },
+            sw3: { name: 'SW3', x: 0, y: 0 }
+        };
+
+        const hosts = {
+            pc1: { name: 'PC-A', x: 0, y: 0 },
+            pc2: { name: 'PC-B', x: 0, y: 0 }
+        };
+
+        function resizeCanvas() {
+            const box = canvas.parentElement.getBoundingClientRect();
+            dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.floor(box.width * dpr));
+            canvas.height = Math.max(1, Math.floor(box.height * dpr));
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function size() {
+            return { w: canvas.width / dpr, h: canvas.height / dpr };
+        }
+
+        function phaseProgress() {
+            return ((performance.now() - stepStarted) % 4200) / 4200;
+        }
+
+        function layout() {
+            const { w, h } = size();
+            switches.sw1.x = w * 0.5;
+            switches.sw1.y = h * 0.24;
+            switches.sw2.x = w * 0.28;
+            switches.sw2.y = h * 0.62;
+            switches.sw3.x = w * 0.72;
+            switches.sw3.y = h * 0.62;
+            hosts.pc1.x = w * 0.12;
+            hosts.pc1.y = h * 0.78;
+            hosts.pc2.x = w * 0.88;
+            hosts.pc2.y = h * 0.78;
+        }
+
+        function drawBackground() {
+            const { w, h } = size();
+            const step = steps[current];
+            ctx.clearRect(0, 0, w, h);
+
+            const glow = ctx.createRadialGradient(w / 2, h * 0.48, 20, w / 2, h * 0.48, Math.max(w, h) * 0.72);
+            glow.addColorStop(0, `${step.color}18`);
+            glow.addColorStop(0.62, 'rgba(15, 23, 42, 0.14)');
+            glow.addColorStop(1, 'rgba(2, 6, 23, 0.82)');
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, w, h);
+        }
+
+        function drawCable(a, b, color, label, options = {}) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = options.width || 4;
+            if (options.dashed) {
+                ctx.setLineDash([10, 8]);
+                ctx.lineDashOffset = -time * 18;
+            }
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const mx = (a.x + b.x) / 2;
+            const my = (a.y + b.y) / 2;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.76)';
+            ctx.strokeStyle = `${color}99`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(mx - 48, my - 13, 96, 26, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.font = '800 11px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, mx, my + 1);
+            ctx.restore();
+        }
+
+        function drawTopology() {
+            const step = steps[current];
+            const normal = step.recovered ? '#22c55e' : '#38bdf8';
+            const activeLoop = current >= 1 && current <= 5;
+            const suspected = current === 4;
+
+            drawCable(switches.sw1, switches.sw2, normal, 'Trunk');
+            drawCable(switches.sw1, switches.sw3, suspected ? '#f59e0b' : normal, suspected ? '疑似端口' : 'Trunk');
+            drawCable(switches.sw2, switches.sw3, step.blocked ? '#64748b' : activeLoop ? '#ef4444' : normal, step.blocked ? 'STP 阻塞' : 'Loop Path', { dashed: step.blocked });
+            drawCable(switches.sw2, hosts.pc1, '#22c55e', 'Access');
+            drawCable(switches.sw3, hosts.pc2, '#22c55e', 'Access');
+
+            if (activeLoop && !step.isolate) {
+                drawCable(switches.sw3, switches.sw1, '#f59e0b', '误接网线', { dashed: current < 2 });
+            }
+
+            if (step.isolate) {
+                drawCable(switches.sw3, switches.sw1, '#64748b', '已隔离', { dashed: true });
+            }
+        }
+
+        function drawSwitch(node, labelColor = '#38bdf8') {
+            ctx.save();
+            ctx.shadowColor = labelColor;
+            ctx.shadowBlur = 22;
+            ctx.fillStyle = labelColor;
+            ctx.beginPath();
+            ctx.roundRect(node.x - 42, node.y - 28, 84, 56, 10);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(node.x - 42, node.y - 28, 84, 56, 10);
+            ctx.stroke();
+
+            ctx.fillStyle = '#06111f';
+            ctx.font = '900 18px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(node.name, node.x, node.y - 3);
+
+            for (let i = 0; i < 5; i += 1) {
+                const blink = current >= 2 && current <= 4 ? Math.sin(time * 18 + i) > 0 : true;
+                ctx.fillStyle = blink ? '#bbf7d0' : '#14532d';
+                ctx.fillRect(node.x - 28 + i * 14, node.y + 16, 8, 4);
+            }
+        }
+
+        function drawHost(host) {
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.roundRect(host.x - 30, host.y - 22, 60, 44, 8);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+            ctx.stroke();
+            ctx.fillStyle = '#06111f';
+            ctx.font = '900 13px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(host.name, host.x, host.y);
+        }
+
+        function drawStorm() {
+            const step = steps[current];
+            if (step.storm <= 0) return;
+
+            const path = [switches.sw1, switches.sw2, switches.sw3, switches.sw1];
+            const count = Math.floor(8 + step.storm * 30);
+            for (let i = 0; i < count; i += 1) {
+                const phase = (phaseProgress() * 3 + i / count) % 1;
+                const seg = Math.floor(phase * 3);
+                const local = phase * 3 - seg;
+                const a = path[seg];
+                const b = path[seg + 1];
+                const x = a.x + (b.x - a.x) * local;
+                const y = a.y + (b.y - a.y) * local;
+                const color = current >= 5 ? '#f59e0b' : '#ef4444';
+
+                ctx.save();
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 14;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, 4 + step.storm * 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawMacTable() {
+            if (current < 3) return;
+            const { w } = size();
+            const x = w - 300;
+            const y = 24;
+            const flip = Math.sin(time * 8) > 0;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.72)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x, y, 276, 116, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '900 12px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('MAC 地址漂移', x + 14, y + 24);
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '800 12px Consolas, monospace';
+            ctx.fillText('00:11:22:33:44:55', x + 14, y + 54);
+            ctx.fillStyle = flip ? '#ef4444' : '#38bdf8';
+            ctx.fillText(flip ? 'SW1 G0/3' : 'SW1 G0/1', x + 166, y + 54);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('日志: MAC_FLAP', x + 14, y + 84);
+            ctx.fillText('现象: 同一 MAC 端口跳变', x + 14, y + 104);
+        }
+
+        function drawProtection() {
+            if (current < 6) return;
+            const points = [switches.sw1, switches.sw2, switches.sw3];
+            points.forEach(point => {
+                ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 64 + Math.sin(time * 2) * 5, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.72)';
+            ctx.beginPath();
+            ctx.roundRect(24, 24, 292, 88, 10);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#22c55e';
+            ctx.font = '900 13px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('防环策略已启用', 40, 52);
+            ctx.fillStyle = '#dcfce7';
+            ctx.font = '800 12px Inter, sans-serif';
+            ctx.fillText('STP / BPDU Guard / Storm Control', 40, 78);
+            ctx.fillText('端口安全 + 接入口管控', 40, 98);
+        }
+
+        function drawHud() {
+            const step = steps[current];
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.76)';
+            ctx.strokeStyle = `${step.color}80`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(24, 130, 300, 82, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = step.color;
+            ctx.font = '900 12px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`阶段 ${String(current + 1).padStart(2, '0')} / ${step.name}`, 40, 156);
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '900 19px Inter, sans-serif';
+            ctx.fillText(step.status, 40, 184);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '800 12px Inter, sans-serif';
+            ctx.fillText(`广播风暴强度: ${Math.round(step.storm * 100)}%`, 40, 202);
+        }
+
+        function render() {
+            time += 0.016;
+            layout();
+            drawBackground();
+            drawTopology();
+            drawStorm();
+            drawMacTable();
+            drawProtection();
+            drawSwitch(switches.sw1, current >= 2 && current <= 4 ? '#ef4444' : steps[current].color);
+            drawSwitch(switches.sw2, current >= 2 && current <= 4 ? '#ef4444' : '#38bdf8');
+            drawSwitch(switches.sw3, current >= 2 && current <= 4 ? '#ef4444' : '#38bdf8');
+            drawHost(hosts.pc1);
+            drawHost(hosts.pc2);
+            drawHud();
+            requestAnimationFrame(render);
+        }
+
+        function renderSteps() {
+            stepsEl.innerHTML = steps.map((step, index) => {
+                const classes = ['step'];
+                if (index === current) classes.push('active');
+                if (index < current) classes.push('done');
+                return `
+                    <button class="${classes.join(' ')}" type="button" data-step="${index}">
+                        <span class="step-index">${index + 1}</span>
+                        <span class="step-name">${step.name}</span>
+                        <span class="step-small">${step.small}</span>
+                    </button>
+                `;
+            }).join('');
+
+            stepsEl.querySelectorAll('.step').forEach(button => {
+                button.addEventListener('click', () => {
+                    stopAutoPlay();
+                    setStep(Number(button.dataset.step));
+                });
+            });
+        }
+
+        function renderSidebar() {
+            const step = steps[current];
+            counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+            phaseChip.textContent = `阶段: ${step.name}`;
+            phaseLabel.textContent = `阶段 ${String(current + 1).padStart(2, '0')}`;
+            stepTitle.textContent = step.name;
+            statusMetric.textContent = step.status;
+            riskMetric.textContent = step.risk;
+            summaryText.textContent = step.summary;
+            visualText.textContent = step.visual;
+            actionText.textContent = step.action;
+            fixText.textContent = step.fix;
+            progressFill.style.width = `${((current + 1) / steps.length) * 100}%`;
+            prevBtn.disabled = current === 0;
+            nextBtn.disabled = current === steps.length - 1;
+            playBtn.textContent = isPlaying ? '暂停演示' : '自动演示';
+            playBtn.classList.toggle('playing', isPlaying);
+
+            timeline.innerHTML = steps.map((item, index) => `
+                <div class="timeline-row">
+                    <div class="timecode">${index < current ? '已完成' : index === current ? '当前' : '待播放'}</div>
+                    <div class="event">${index + 1}. ${item.name}</div>
+                </div>
+            `).join('');
+
+            logList.innerHTML = step.logs.map((log, index) => `
+                <div class="timeline-row">
+                    <div class="timecode">T+${String(index + 1).padStart(2, '0')}</div>
+                    <div class="event">${log}</div>
+                </div>
+            `).join('');
+        }
+
+        function setStep(index) {
+            current = Math.max(0, Math.min(steps.length - 1, index));
+            stepStarted = performance.now();
+            renderSteps();
+            renderSidebar();
+        }
+
+        function startAutoPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            renderSidebar();
+            autoTimer = window.setInterval(() => {
+                if (current >= steps.length - 1) {
+                    stopAutoPlay();
+                    return;
+                }
+                setStep(current + 1);
+            }, 4200);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            if (autoTimer) {
+                window.clearInterval(autoTimer);
+                autoTimer = null;
+            }
+            renderSidebar();
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(current - 1);
+        });
+        nextBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(current + 1);
+        });
+        playBtn.addEventListener('click', toggleAutoPlay);
+        resetBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            setStep(0);
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        renderSteps();
+        renderSidebar();
+        render();
+    </script>
+</body>
+</html>
