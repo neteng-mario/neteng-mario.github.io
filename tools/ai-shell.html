@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Shell - 网工运维 AI 终端工具</title>
+    <title>AI Shell 1.2 - 网工运维 AI 终端工具</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -480,7 +480,7 @@
     <main class="container">
         <nav class="topbar">
             <a class="back-link" href="../index.html#ops-tools">← 返回 NetDoc Hub</a>
-            <span class="version-pill">Windows x64 · v1.0.0</span>
+            <span class="version-pill">Windows x64 · v1.2.0</span>
         </nav>
 
         <section class="hero">
@@ -488,25 +488,25 @@
                 <p class="eyebrow">AI Terminal for Network Ops</p>
                 <h1>AI Shell</h1>
                 <p class="hero-copy">
-                    面向网络工程师和运维人员的桌面终端工具，把 SSH、Telnet、串口、SFTP 文件传输和 AI 排障分析放在同一个工作台里。
+                    面向网络工程师和运维人员的桌面终端工具，把 SSH、Telnet、串口、SFTP 文件传输和 AI 排障分析放在同一个工作台里。1.2 版本新增多轮 AI Agent 自动排障模式，命令实时流式镜像、变更审批卡片和 GLM 智谱大模型支持。
                 </p>
                 <div class="actions">
-                    <a class="primary-button" href="../downloads/AI-Shell-1.0.0-Setup.exe" download>下载安装包</a>
+                    <a class="primary-button" href="../downloads/AI-Shell-1.2.0-Setup.exe" download>下载 1.2 安装包</a>
                     <a class="secondary-button" href="#features">查看功能</a>
                     <a class="secondary-button" href="#workflow">使用流程</a>
                 </div>
                 <div class="stats">
                     <div class="stat">
-                        <strong>3 类连接</strong>
-                        <span>SSH / Telnet / 串口</span>
+                        <strong>AI Agent 模式</strong>
+                        <span>多轮自动排障</span>
                     </div>
                     <div class="stat">
-                        <strong>SFTP</strong>
-                        <span>SSH 会话上传下载</span>
+                        <strong>命令审批卡片</strong>
+                        <span>变更操作人工确认</span>
                     </div>
                     <div class="stat">
-                        <strong>AI 排障</strong>
-                        <span>读取终端上下文分析</span>
+                        <strong>GLM 智谱支持</strong>
+                        <span>多厂商模型切换</span>
                     </div>
                 </div>
             </div>
@@ -518,56 +518,57 @@
                         <span class="dot orange"></span>
                         <span class="dot green"></span>
                     </div>
-                    <span class="terminal-title">AI Shell · SSH Session</span>
+                    <span class="terminal-title">AI Shell 1.2 · Agent Workspace</span>
                 </div>
                 <div class="terminal-body">
-                    <div class="terminal-line"><span class="muted">$</span> ssh demo@192.168.1.10</div>
-                    <div class="terminal-line"><span class="accent">connected:</span> Linux host online</div>
-                    <div class="terminal-line"><span class="muted">$</span> systemctl status nginx</div>
-                    <div class="terminal-line"><span class="warn">warning:</span> service failed after config reload</div>
-                    <div class="terminal-line"><span class="muted">AI Assistant:</span></div>
-                    <div class="terminal-line">1. 先检查最近日志和配置语法。</div>
-                    <div class="terminal-line">2. 建议执行只读命令，不直接重启或覆盖配置。</div>
-                    <div class="terminal-line"><span class="accent">next:</span> journalctl -u nginx -n 80 --no-pager</div>
+                    <div class="terminal-line"><span class="muted">session:</span> core-switch · <span class="accent">connected</span></div>
+                    <div class="terminal-line"><span class="muted">vendor:</span> H3C (auto-detected)</div>
+                    <div class="terminal-line"><span class="muted">AI Agent:</span> <span class="accent">thinking...</span></div>
+                    <div class="terminal-line"><span class="muted">plan:</span> 1. 检查接口状态 → 2. 查看日志 → 3. 分析原因</div>
+                    <div class="terminal-line"><span class="warn">──── AI executing (read-only) ────</span></div>
+                    <div class="terminal-line"><span class="muted">$</span> display interface brief | include Down</div>
+                    <div class="terminal-line"><span class="warn">──── streaming to terminal ────</span></div>
+                    <div class="terminal-line"><span class="muted">approval:</span> <span class="warn">shutdown interface Gi1/0/24</span></div>
+                    <div class="terminal-line"><span class="accent">[Approve]</span>  [Reject]  [Experimental]</div></div>
                 </div>
             </div>
         </section>
 
         <section id="features" class="section">
             <div class="section-heading">
-                <h2>核心模块</h2>
-                <p>AI Shell 不是单一终端，而是把日常排障里常用的连接、日志、传文件和 AI 分析集中在一起。</p>
+                <h2>1.2 核心更新</h2>
+                <p>AI Shell 1.2 引入完整的多轮 AI Agent 自动排障模式，支持命令实时流式镜像、变更操作审批、设备厂商自动识别和 GLM 智谱大模型接入。</p>
             </div>
             <div class="grid">
                 <article class="feature">
-                    <div class="feature-icon">🔌</div>
-                    <h3>SSH / Telnet / 串口</h3>
-                    <p>支持服务器远程登录、网络设备 Telnet 调试和 Console 串口维护，适合机房、实验和应急排障场景。</p>
-                </article>
-                <article class="feature">
-                    <div class="feature-icon">⌨️</div>
-                    <h3>终端搜索与日志导出</h3>
-                    <p>终端中可搜索 error、failed、down 等关键字，支持复制粘贴、清空窗口和导出日志，方便复盘与工单记录。</p>
-                </article>
-                <article class="feature">
-                    <div class="feature-icon">📁</div>
-                    <h3>SFTP 文件传输</h3>
-                    <p>SSH 会话中直接浏览本地和远程目录，用于上传巡检脚本、下载日志、备份配置，不需要额外打开 SFTP 工具。</p>
-                </article>
-                <article class="feature">
                     <div class="feature-icon">🤖</div>
-                    <h3>AI 助手分析</h3>
-                    <p>支持 DeepSeek 和 OpenAI，可把最近终端输出交给 AI 分析，按通用、网络设备、Linux、Windows 角色给出排查建议。</p>
+                    <h3>多轮 AI Agent 模式</h3>
+                    <p>基于原生函数调用（tool_calls）的多轮对话代理循环，AI 可自动规划步骤、执行只读命令、分析输出并给出下一步操作建议。</p>
                 </article>
                 <article class="feature">
-                    <div class="feature-icon">🧩</div>
-                    <h3>连接配置管理</h3>
-                    <p>常用连接可本地保存，后续直接载入。系统支持时，连接配置和 API 配置会使用本机加密存储。</p>
+                    <div class="feature-icon">📺</div>
+                    <h3>命令实时流式镜像</h3>
+                    <p>AI 执行的只读命令实时流式输出到终端，带黄色边界标记，让你清楚看到 Agent 每一步在做什么。</p>
                 </article>
                 <article class="feature">
-                    <div class="feature-icon">🎬</div>
-                    <h3>日常排障工作台</h3>
-                    <p>左侧连接、中间终端、右侧文件和 AI 辅助的布局，适合把远程维护、日志查看和排障分析放在同一个界面完成。</p>
+                    <div class="feature-icon">🔐</div>
+                    <h3>命令审批卡片</h3>
+                    <p>涉及配置变更的命令弹出审批卡片（批准 / 拒绝 / 实验模式），通过用户 PTY 执行，确保危险操作人工确认。</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon">🧠</div>
+                    <h3>GLM 智谱大模型</h3>
+                    <p>新增 GLM（智谱 AI）OpenAI 兼容接口支持，所有厂商（DeepSeek / GLM / OpenAI）均提供模型下拉快速切换。</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon">🏷️</div>
+                    <h3>设备厂商自动识别</h3>
+                    <p>自动检测设备提示符（H3C/华为 &lt;&gt; / []、Cisco name#、Juniper user@host&gt;），AI 系统提示包含厂商专属命令参考表。</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Agent 状态栏</h3>
+                    <p>实时显示当前阶段（思考 / 执行中）、当前命令、目标会话和计时器，随时可一键停止。</p>
                 </article>
             </div>
         </section>
@@ -575,28 +576,28 @@
         <section id="workflow" class="section">
             <div class="section-heading">
                 <h2>使用流程</h2>
-                <p>第一次使用时，可以按这个顺序完成连接、命令执行、文件传输和 AI 分析。</p>
+                <p>1.2 版本的核心体验是 AI Agent 自动排障：连接设备后，描述问题让 AI 自动规划步骤、执行检查、分析原因并给出修复方案。</p>
             </div>
             <div class="steps">
                 <article class="step">
                     <div class="step-number">01</div>
-                    <h3>建立连接</h3>
-                    <p>选择 SSH、Telnet 或串口，填写主机地址、端口、账号和串口参数，点击连接。</p>
+                    <h3>连接设备</h3>
+                    <p>选择 SSH、Telnet 或串口，填写主机地址、端口、账号和串口参数，点击连接。系统自动识别设备厂商。</p>
                 </article>
                 <article class="step">
                     <div class="step-number">02</div>
-                    <h3>执行命令</h3>
-                    <p>在终端输入排查命令，搜索关键输出，必要时导出终端日志。</p>
+                    <h3>启动 AI Agent</h3>
+                    <p>选择 AI 厂商和模型，描述排障目标，AI 自动生成多步执行计划并开始只读命令检查。</p>
                 </article>
                 <article class="step">
                     <div class="step-number">03</div>
-                    <h3>传输文件</h3>
-                    <p>SSH 会话中使用 SFTP 上传脚本、下载日志或备份配置文件。</p>
+                    <h3>审批与执行</h3>
+                    <p>只读命令实时流式镜像到终端；涉及变更的命令弹出审批卡片，确认后通过用户 PTY 执行。</p>
                 </article>
                 <article class="step">
                     <div class="step-number">04</div>
-                    <h3>AI 分析</h3>
-                    <p>选择分析角色，填写指令，让 AI 根据最近终端输出给出原因判断和下一步命令。</p>
+                    <h3>获取结论</h3>
+                    <p>Agent 多轮分析后给出原因判断和修复建议，全程可随时点击停止按钮中断。</p>
                 </article>
             </div>
         </section>
@@ -604,22 +605,23 @@
         <section class="section">
             <div class="download-panel">
                 <div>
-                    <h2>下载 AI Shell 安装包</h2>
-                    <p>当前页面提供 Windows 安装包。安装后可体验 SSH、Telnet、串口、SFTP 文件传输和 AI 排障分析流程。</p>
+                    <h2>下载 AI Shell 1.2 安装包</h2>
+                    <p>当前页面提供 Windows x64 安装包。安装后可体验 SSH、Telnet、串口、SFTP 文件传输、多轮 AI Agent 自动排障、命令审批和 GLM 智谱大模型支持。</p>
                     <div class="download-meta">
-                        <span class="tag green">AI-Shell-1.0.0-Setup.exe</span>
-                        <span class="tag blue">约 81.4 MB</span>
+                        <span class="tag green">AI-Shell-1.2.0-Setup.exe</span>
+                        <span class="tag blue">约 78 MB</span>
                         <span class="tag">Windows x64</span>
                     </div>
                 </div>
-                <a class="primary-button" href="../downloads/AI-Shell-1.0.0-Setup.exe" download>立即下载</a>
+                <a class="primary-button" href="../downloads/AI-Shell-1.2.0-Setup.exe" download>立即下载</a>
             </div>
         </section>
 
         <section class="section panel warning">
             <h2>使用提醒</h2>
             <ul>
-                <li>AI 输出是辅助建议，不应替代人工确认。</li>
+                <li>AI Agent 的只读命令自动执行，涉及配置变更的命令必须通过审批卡片人工确认。</li>
+                <li>实验模式会批量批准后续命令，建议在测试环境使用，生产环境保持逐条审批。</li>
                 <li>删除、重启、覆盖配置、修改防火墙策略、改路由等危险操作必须人工复核。</li>
                 <li>SFTP 当前主要用于 SSH 会话，Telnet 和串口场景以终端交互为主。</li>
             </ul>
